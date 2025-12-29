@@ -1,0 +1,6 @@
+Just change this line:
+
+const FORTY_EIGHT_HOURS_MS = 48 * 60 * 60 * 1000;
+
+
+👉 Replace 48 with the number of hours you want.

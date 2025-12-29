@@ -1,0 +1,47 @@
+{
+  "compilerOptions": {
+    /* ---- Core build options ---- */
+    "target": "ES2020", // ✅ Enables BigInt (0n, 1n, etc.)
+    "lib": [
+      "dom",
+      "dom.iterable",
+      "es2020"
+    ], // ✅ Includes BigInt + browser APIs
+    "module": "esnext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    /* ---- TypeScript strictness ---- */
+    "strict": true,
+    "noEmit": true,
+    "skipLibCheck": true,
+    "isolatedModules": true,
+    "esModuleInterop": true,
+    "resolveJsonModule": true,
+    /* ---- Paths / Aliases ---- */
+    "baseUrl": ".",
+    "paths": {
+      "@/*": [
+        "./*"
+      ]
+    },
+    /* ---- Next.js integration ---- */
+    "plugins": [
+      {
+        "name": "next"
+      }
+    ],
+    /* ---- Incremental build ---- */
+    "incremental": true,
+    "allowJs": true
+  },
+  "include": [
+    "next-env.d.ts",
+    "**/*.ts",
+    "**/*.tsx",
+    ".next/types/**/*.ts",
+    ".next/dev/types/**/*.ts"
+  ],
+  "exclude": [
+    "node_modules"
+  ]
+}

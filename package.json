@@ -1,0 +1,42 @@
+{
+  "name": "weewux-dashboard",
+  "version": "1.0.1",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --webpack",
+    "build": "next build --webpack",
+    "start": "next start --webpack",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@rainbow-me/rainbowkit": "^2.2.8",
+    "@tanstack/react-query": "^5.89.0",
+    "ethers": "^6.15.0",
+    "framer-motion": "^12.23.16",
+    "next": "^16.0.7",
+    "react": "19.1.0",
+    "react-confetti": "^6.4.0",
+    "react-dom": "19.1.0",
+    "react-hot-toast": "^2.6.0",
+    "react-icons": "^5.5.0",
+    "react-qr-code": "^2.0.18",
+    "viem": "^2.37.6",
+    "wagmi": "^2.17.0"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@tailwindcss/postcss": "^4.1.13",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "autoprefixer": "^10.4.21",
+    "compressing": "^2.0.0",
+    "eslint": "^9",
+    "eslint-config-next": "16.0.7",
+    "gzipper": "^8.2.1",
+    "pino-pretty": "^13.1.1",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.13",
+    "typescript": "^5"
+  }
+}

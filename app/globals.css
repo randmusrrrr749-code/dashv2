@@ -1,0 +1,184 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@import "tailwindcss";
+
+:root {
+  --background: transparent;
+  --foreground: #171717;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --background: #0a0a0a;
+    --foreground: #ededed;
+  }
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  font-family: Arial, Helvetica, sans-serif;
+}
+
+/* Base neon card */
+.neon-card {
+  position: relative;
+  border-radius: 1rem; /* close to rounded-2xl */
+
+  /* Slightly more "glass" so bg shows through */
+  background: linear-gradient(
+      180deg,
+      rgba(255,255,255,0.06) 0%,
+      rgba(0,0,0,0.18) 18%,
+      rgba(0,0,0,0.30) 90%
+    );
+  border: 1px solid rgba(255, 255, 255, 0.09);
+
+  backdrop-filter: blur(14px);
+  -webkit-backdrop-filter: blur(14px);
+
+  transition: transform .18s ease, filter .18s ease;
+  will-change: transform;
+}
+
+
+/* Soft ambient + top rim */
+.neon-card::before {
+  content: "";
+  position: absolute;
+  inset: -1px;
+  border-radius: inherit;
+  pointer-events: none;
+
+  background:
+    /* thin top rim */
+    linear-gradient(to bottom, rgba(255,255,255,0.10), transparent 28%),
+    /* your haze */
+    radial-gradient(900px 240px at 50% 0%,
+      rgba(163,230,53,0.18),
+      transparent 62%);
+
+  opacity: 0.45;
+  filter: blur(10px);
+}
+
+
+
+.neon-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+
+  box-shadow:
+    /* Glass inner highlight (top) */
+    inset 0 1px 0 rgba(255,255,255,0.08),
+
+    /* Glass inner shadow (bottom) */
+    inset 0 -1px 0 rgba(0,0,0,0.55),
+
+    /* Your neon rim */
+    0 0 0 1px rgba(163,230,53,0.10) inset,
+
+    /* Outer bloom (kept subtle) */
+    0 0 18px rgba(163,230,53,0.08);
+
+  opacity: 0.78;
+}
+
+
+/* Hover = tiny lift + slightly stronger bloom */
+.neon-card:hover {
+  transform: translateY(-1px);
+}
+.neon-card:hover::after {
+  box-shadow:
+    0 0 0 1px rgba(163,230,53,0.14) inset,
+    0 0 26px rgba(163,230,53,0.12);
+}
+
+/* Tiers */
+.neon-card--soft::before { opacity: 0.28; }
+.neon-card--soft::after  { opacity: 0.48; }
+
+.neon-card--hero::before { opacity: 0.55; }
+.neon-card--hero::after  { opacity: 0.78; }
+
+
+
+
+@keyframes border {
+  0% {
+    background-position: 0% 50%;
+  }
+  50% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@keyframes shine {
+  0% { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
+
+.animate-border {
+  background-size: 300% 300%;
+  animation: border 6s linear infinite;
+}
+
+/* Hide number input arrows */
+input[type="number"]::-webkit-outer-spin-button,
+input[type="number"]::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+input[type="number"] {
+  -moz-appearance: textfield; /* Firefox */
+}
+
+@keyframes floatDust {
+  0%   { transform: translate3d(0, 0, 0); opacity: .55; }
+  50%  { transform: translate3d(-0.8%, -1.2%, 0); opacity: .75; }
+  100% { transform: translate3d(0, 0, 0); opacity: .55; }
+}
+
+/* “Shiny particles” using layered radial gradients */
+.bg-particles{
+  pointer-events: none;
+  background-image:
+    radial-gradient(2px 2px at 12% 22%, rgba(255,255,255,0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 22% 68%, rgba(234,179,8,0.55), transparent 60%),
+    radial-gradient(1.5px 1.5px at 36% 42%, rgba(255,255,255,0.45), transparent 60%),
+    radial-gradient(2px 2px at 48% 58%, rgba(163,230,53,0.45), transparent 60%),
+    radial-gradient(1.5px 1.5px at 62% 30%, rgba(255,255,255,0.50), transparent 60%),
+    radial-gradient(2px 2px at 72% 64%, rgba(234,179,8,0.40), transparent 60%),
+    radial-gradient(1.5px 1.5px at 86% 40%, rgba(255,255,255,0.45), transparent 60%),
+    radial-gradient(2px 2px at 90% 78%, rgba(163,230,53,0.35), transparent 60%);
+  filter: blur(0.2px);
+  animation: floatDust 12s ease-in-out infinite;
+}
+
+
+.hide-scrollbar {
+  scrollbar-width: none;       
+  -ms-overflow-style: none;    
+}
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;               
+}
+
