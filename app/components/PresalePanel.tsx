@@ -1175,9 +1175,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
   className="h-2.5 rounded-full bg-gradient-to-r from-lime-400 via-cyan-400 to-purple-500"
 />
               </div>
-              <p className="mt-1 text-[10px] text-gray-500">
-                Live on-chain stats will replace this placeholder next.
-              </p>
+              
             </div>
           </div>
 

@@ -82,7 +82,7 @@ export default function SettingsPage() {
 
         <SettingsCard
           title="Display"
-          footer="Theme customization can be added later (dark / neon / compact modes)."
+          
         >
           <div className="flex items-center justify-between rounded-xl border border-white/10 bg-black/30 p-3">
             <div>
