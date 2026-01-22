@@ -1,21 +1,18 @@
 "use client";
 
 import "@rainbow-me/rainbowkit/styles.css";
-import {
-  RainbowKitProvider,
-  getDefaultConfig,
-} from "@rainbow-me/rainbowkit";
+import { RainbowKitProvider, getDefaultConfig } from "@rainbow-me/rainbowkit";
 import { WagmiConfig } from "wagmi";
-import { mainnet } from "wagmi/chains";
+import { mainnet, base, bsc } from "wagmi/chains";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 
 // create one QueryClient instance for the app
 const queryClient = new QueryClient();
 
 const config = getDefaultConfig({
-  appName: "Cortexom Presale",
-  projectId: "b317015e5e20.......bc3052ee5967a9", // your WalletConnect projectId
-  chains: [mainnet],
+  appName: "OMIX presale",
+  projectId: "b317015e5e20.......bc3052ee5967a9",
+  chains: [mainnet, base, bsc],
   ssr: true,
 });
 

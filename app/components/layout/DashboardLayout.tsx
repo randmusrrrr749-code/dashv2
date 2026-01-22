@@ -23,6 +23,8 @@ const navItems = [
 export default function DashboardLayout({ children }: DashboardLayoutProps) {
   const pathname = usePathname();
   const fxRef = useRef<HTMLDivElement | null>(null);
+  const drawerRef = useRef<HTMLDivElement | null>(null);
+  const scrollYRef = useRef(0);
 
   const [mobileOpen, setMobileOpen] = useState(false);
 
@@ -34,11 +36,66 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   // lock body scroll when drawer is open
   useEffect(() => {
     if (!mobileOpen) return;
-    const prev = document.body.style.overflow;
+    const prevOverflow = document.body.style.overflow;
+    const prevPosition = document.body.style.position;
+    const prevTop = document.body.style.top;
+    const prevWidth = document.body.style.width;
+    scrollYRef.current = window.scrollY || 0;
+
     document.body.style.overflow = "hidden";
+    document.body.style.position = "fixed";
+    document.body.style.top = `-${scrollYRef.current}px`;
+    document.body.style.width = "100%";
     return () => {
-      document.body.style.overflow = prev;
+      document.body.style.overflow = prevOverflow;
+      document.body.style.position = prevPosition;
+      document.body.style.top = prevTop;
+      document.body.style.width = prevWidth;
+      window.scrollTo(0, scrollYRef.current);
     };
+  }, [mobileOpen]);
+
+  // focus trap + escape close for mobile drawer
+  useEffect(() => {
+    if (!mobileOpen) return;
+    const drawer = drawerRef.current;
+    if (!drawer) return;
+
+    drawer.focus();
+
+    const getFocusable = () =>
+      drawer.querySelectorAll<HTMLElement>(
+        'a[href], button, input, select, textarea, [tabindex]:not([tabindex="-1"])'
+      );
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        e.preventDefault();
+        setMobileOpen(false);
+        return;
+      }
+
+      if (e.key !== "Tab") return;
+      const focusable = Array.from(getFocusable()).filter(
+        (el) => !el.hasAttribute("disabled")
+      );
+      if (focusable.length === 0) return;
+
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      const active = document.activeElement as HTMLElement | null;
+
+      if (e.shiftKey && active === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && active === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    drawer.addEventListener("keydown", onKeyDown);
+    return () => drawer.removeEventListener("keydown", onKeyDown);
   }, [mobileOpen]);
 
   // mouse parallax for background FX
@@ -90,7 +147,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="px-3 py-4 border-b border-white/5">
   <Link href="/dashboard" className="flex items-center">
     <Image
-      src="/images/logo.png"
+      src="/images/logo1.png"
       alt="Weewux"
       width={250}
       height={60}
@@ -119,7 +176,13 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm"
           />
           {/* Drawer */}
-          <div className="fixed z-50 left-0 top-0 h-full w-[82%] max-w-[320px] bg-black/70 backdrop-blur-xl border-r border-white/10">
+          <div
+            ref={drawerRef}
+            tabIndex={-1}
+            role="dialog"
+            aria-modal="true"
+            className="fixed z-50 left-0 top-0 h-full w-[82%] max-w-[320px] bg-black/70 backdrop-blur-xl border-r border-white/10 outline-none"
+          >
             <div className="px-5 py-4 border-b border-white/10 flex items-center justify-between">
               <Link
   href="/dashboard"
@@ -194,7 +257,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
           {/* Background FX */}
           <div
             ref={fxRef}
-            className="pointer-events-none absolute inset-0"
+                className="pointer-events-none absolute inset-0 hidden md:block"
             style={{ ["--mx" as any]: 0, ["--my" as any]: 0 }}
           >
             {/* Base atmosphere */}

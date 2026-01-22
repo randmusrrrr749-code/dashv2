@@ -1,4 +1,5 @@
 "use client";
+import { useChainId, useSwitchChain } from "wagmi";
 
 import { useState, useEffect, useRef } from "react";
 import { motion } from "framer-motion";
@@ -11,22 +12,29 @@ import {
 } from "react-icons/si";
 import { FaRegCreditCard } from "react-icons/fa";
 
-import { useAccount, useWriteContract, usePublicClient } from "wagmi";
+import {
+  useAccount,
+  useWriteContract,
+  usePublicClient,
+  useWaitForTransactionReceipt,
+  useBalance,
+  useSendTransaction,
+} from "wagmi";
+
 import { ConnectButton } from "@rainbow-me/rainbowkit";
-import { parseEther, parseUnits } from "viem";
+import { parseEther, parseUnits, isAddress } from "viem";
 import ERC20ABI from "../abi/ERC20.json";
 import Image from "next/image";
 import toast from "react-hot-toast";
-import PresaleABI from "../abi/weewuxPresale.json";
 import QRCode from "react-qr-code";
 
 import { PROMO } from "../../promo.config";
-
 
 // -----------------------
 // TYPES
 // -----------------------
 type ManualMethod = "BTC" | "ETH" | "USDT" | "SOL" | "XRP" | "CARD";
+
 
 type PromoData = {
   enabled: boolean;
@@ -35,23 +43,39 @@ type PromoData = {
   body: string;
   badge: string;
   endsText: string;
-  endsAt?: string;              // ISO date string from sheet
+  endsAt?: string;
   highlight_from?: number;
-  discountPercentage?: number;  // <-- NEW (ex: 20 means +20% OMIX)
+  discountPercentage?: number;
 };
-
 
 // -----------------------
 // CONFIG
 // -----------------------
-const PRESALE_ADDRESS = "0x4a6dfa7d9880F66E82fF513bcd04F94b1EfD1Aa8";
-
-export const TOKEN_ADDRESSES = {
-  USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
-  USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+// ERC20 addresses (mainnet)
+const TOKENS_BY_CHAIN: Record<
+  number,
+  { USDT?: `0x${string}`; USDC?: `0x${string}` }
+> = {
+  1: {
+    USDT: "0xdAC17F958D2ee523a2206206994597C13D831ec7",
+    USDC: "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+  },
+  8453: {
+    
+    USDT: process.env.NEXT_PUBLIC_BASE_USDT as `0x${string}` | undefined,
+    USDC: process.env.NEXT_PUBLIC_BASE_USDC as `0x${string}` | undefined,
+  },
+  56: {
+    
+    USDT: process.env.NEXT_PUBLIC_BSC_USDT as `0x${string}` | undefined,
+    USDC: process.env.NEXT_PUBLIC_BSC_USDC as `0x${string}` | undefined,
+  },
 };
 
+
 // Fallback manual payment static addresses – used if remote config fails
+// NOTE: ETH/USDT manual will display the *chain treasury* (from env) if available.
+// BTC/SOL/XRP still come from sheet/fallback.
 const FALLBACK_MANUAL_PAYMENT_ADDRESSES: Record<
   Exclude<ManualMethod, "CARD">,
   string
@@ -59,8 +83,8 @@ const FALLBACK_MANUAL_PAYMENT_ADDRESSES: Record<
   BTC: "bc1q5v4lph7wfx40wzxvfxctjuwujx863eyfkx3f3e",
   SOL: "DXje1HB1Z3DdLuSHxATiSrM3xvyyyoKpiGK5ZNZ4hvuV",
   XRP: "YOUR_XRP_ADDRESS_HERE",
-  ETH: "YOUR_ETH_ADDRESS_HERE",
-  USDT: "YOUR_USDT_ADDRESS_HERE", // e.g. ERC20 address
+  ETH: "0x0000000000000000000000000000000000000000",
+  USDT: "0x0000000000000000000000000000000000000000",
 };
 
 // Theming for manual payment popup & controls
@@ -131,7 +155,7 @@ const METHOD_PILL_ACTIVE: Record<ManualMethod, string> = {
 // -----------------------
 const TWENTY_FOUR_HOURS_MS = 24 * 60 * 60 * 1000;
 const INITIAL_PRICE = 0.015;
-const DAILY_MULT = 1.03; // +3% every 24h
+const DAILY_MULT = 1.03;
 
 const FALLBACK_START = new Date("2025-12-29T23:00:00Z").getTime();
 
@@ -140,36 +164,112 @@ const GLOBAL_START = (() => {
 
   if (!raw) return FALLBACK_START;
 
-  // If it looks like a date (contains '-' or 'T'), parse as ISO/date string
   if (raw.includes("-") || raw.includes("T")) {
     const parsed = Date.parse(raw);
     return Number.isFinite(parsed) ? parsed : FALLBACK_START;
   }
 
-  // Otherwise treat as numeric timestamp
   let n = Number(raw);
   if (!Number.isFinite(n) || n <= 0) return FALLBACK_START;
 
-  // seconds -> ms
   if (n < 1_000_000_000_000) n *= 1000;
-
   return n;
 })();
+
+// -----------------------
+// HELPERS
+// -----------------------
+const TREASURY_BY_CHAIN: Record<number, `0x${string}` | undefined> = {
+  1: process.env.NEXT_PUBLIC_TREASURY_ETH as `0x${string}` | undefined,
+  8453: process.env.NEXT_PUBLIC_TREASURY_BASE as `0x${string}` | undefined,
+  56: process.env.NEXT_PUBLIC_TREASURY_BSC as `0x${string}` | undefined,
+};
+
+
+const TOKEN_DECIMALS_BY_CHAIN: Record<number, { USDT?: number; USDC?: number }> = {
+  1: { USDT: 6, USDC: 6 },
+  8453: { USDT: 6, USDC: 6 },   // Base (adjust if your token contracts differ)
+  56: { USDT: 18, USDC: 18 },  // BSC (adjust if needed)
+};
 
 
 export default function PresalePanel() {
   const { address, isConnected } = useAccount();
-  const { writeContract, isPending } = useWriteContract();
   const publicClient = usePublicClient();
-  const isClient = () => typeof window !== "undefined";
 
-  const [currency, setCurrency] = useState("ETH");
+  // Keep writeContract ONLY for ERC20 transfers (USDT/USDC)
+  const { writeContractAsync, isPending: isWritePending } = useWriteContract();
+
+  // Use sendTransaction for native ETH transfers
+  const { sendTransactionAsync, isPending: isSendPending } =
+    useSendTransaction();
+
+  const isPending = isWritePending || isSendPending;
+
+  const isClient = () => typeof window !== "undefined";
+  const [currency, setCurrency] = useState<"ETH" | "USDT" | "USDC">("ETH");
+
+
+
+  const chainId = useChainId();
+  const { switchChain } = useSwitchChain();
+
+
+  const treasury = (chainId ? TREASURY_BY_CHAIN[chainId] : undefined) as
+    | `0x${string}`
+    | undefined;
+
+  const isSupportedChain = !!treasury && isAddress(treasury);
+
+  console.log("chainId:", chainId, "treasury:", treasury);
+
+
+
+  // Native balance (ETH)
+  const ethBal = useBalance({
+    address,
+    query: { enabled: !!address },
+  });
+
+  // Token balance (USDT/USDC)
+const tokenAddress =
+  chainId && currency !== "ETH"
+    ? TOKENS_BY_CHAIN[chainId]?.[currency]
+    : undefined;
+    // ✅ Used in multiple places (effects + buy)
+const isTokenSupportedOnChain =
+  currency === "ETH" || (!!tokenAddress && isAddress(tokenAddress));
+
+
+const tokenBal = useBalance({
+  address,
+  token: tokenAddress,
+  query: { enabled: !!address && !!tokenAddress && currency !== "ETH" },
+});
+
+
   const [amount, setAmount] = useState("");
   const [coreAmount, setCoreAmount] = useState("0");
-  const [isApproved, setIsApproved] = useState(false);
-  const [isApproving, setIsApproving] = useState(false);
   const [usdValue, setUsdValue] = useState(0);
   const [isMinAmountValid, setIsMinAmountValid] = useState(true);
+
+  const [lastTxHash, setLastTxHash] = useState<`0x${string}` | null>(null);
+  const [buyTried, setBuyTried] = useState(false);
+  const [lastTxLabel, setLastTxLabel] = useState("");
+
+  // Success popup
+  const [buySuccessOpen, setBuySuccessOpen] = useState(false);
+  const [buySuccessData, setBuySuccessData] = useState<{
+    currency: string;
+    amountPaid: string;
+    usdCost: number;
+    tokens: number;
+    txHash: `0x${string}`;
+  } | null>(null);
+
+  // Balance validation (ETH / USDT / USDC)
+  const [insufficientBalance, setInsufficientBalance] = useState(false);
+  const [buyBalanceError, setBuyBalanceError] = useState("");
 
   // prices in USD
   const [prices, setPrices] = useState({
@@ -181,12 +281,9 @@ export default function PresalePanel() {
     xrp: 0,
   });
 
-
-
   const FALLBACK_PROGRESS_PERCENT = 91;
-const [progressPercent, setProgressPercent] =
-  useState<number>(FALLBACK_PROGRESS_PERCENT);
-
+  const [progressPercent, setProgressPercent] =
+    useState<number>(FALLBACK_PROGRESS_PERCENT);
 
   // -----------------------
   // PRICE EVOLUTION (FIXED)
@@ -199,37 +296,63 @@ const [progressPercent, setProgressPercent] =
   // Referral system
   const [referralCode, setReferralCode] = useState("");
   const [generatedReferral, setGeneratedReferral] = useState("");
-  const [referralMode] = useState<"bonus" | "referral">("bonus"); // reserved for future use
-  const [bonusApplied] = useState(false); // reserved for future use
+  const [referralMode] = useState<"bonus" | "referral">("bonus");
+  const [bonusApplied] = useState(false);
   const [referralUsed, setReferralUsed] = useState(false);
   const [referralBonus, setReferralBonus] = useState(0);
   const [showReferralNotice, setShowReferralNotice] = useState(false);
   const [referralPopupOpen, setReferralPopupOpen] = useState(false);
-  const promo = PROMO;
+  const promo = PROMO as PromoData;
 
-const promoDiscountPctRaw = Number(promo?.discountPercentage ?? 0);
-const promoDiscountPct = Number.isFinite(promoDiscountPctRaw)
-  ? Math.min(100, Math.max(0, promoDiscountPctRaw))
-  : 0;
+  const promoDiscountPctRaw = Number(promo?.discountPercentage ?? 0);
+  const promoDiscountPct = Number.isFinite(promoDiscountPctRaw)
+    ? Math.min(100, Math.max(0, promoDiscountPctRaw))
+    : 0;
 
+  const promoEndsAtMs = promo?.endsAt ? Date.parse(promo.endsAt) : NaN;
+  const promoNotExpired =
+    !promo?.endsAt || Number.isNaN(promoEndsAtMs) || Date.now() < promoEndsAtMs;
 
-const promoEndsAtMs = promo?.endsAt ? Date.parse(promo.endsAt) : NaN;
-const promoNotExpired =
-  !promo?.endsAt || Number.isNaN(promoEndsAtMs) || Date.now() < promoEndsAtMs;
+  const promoActive =
+    !!promo?.enabled && promoNotExpired && promoDiscountPct > 0;
+  const promoMultiplier = promoActive ? 1 + promoDiscountPct / 100 : 1;
 
-const promoActive = !!promo?.enabled && promoNotExpired && promoDiscountPct > 0;
-const promoMultiplier = promoActive ? 1 + promoDiscountPct / 100 : 1;
+  const txReceipt = useWaitForTransactionReceipt({
+    hash: lastTxHash ?? undefined,
+    query: { enabled: !!lastTxHash },
+  });
 
+  useEffect(() => {
+    if (!txReceipt.isSuccess || !lastTxHash) return;
 
+    setBuySuccessOpen(true);
 
+    setBuySuccessData((prev) => {
+      if (prev?.txHash === lastTxHash) return prev;
+      return {
+        currency,
+        amountPaid: amount || "0",
+        usdCost: usdValue || 0,
+        tokens: Number(coreAmount || "0"),
+        txHash: lastTxHash,
+      };
+    });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [txReceipt.isSuccess, lastTxHash]);
 
-  // Manual payment modal (BTC / SOL / XRP etc.)
+  const explorerUrl = publicClient?.chain?.blockExplorers?.default.url;
+  const txUrl =
+    lastTxHash && explorerUrl ? `${explorerUrl}/tx/${lastTxHash}` : null;
+
+  // -----------------------
+  // Manual payment modal
+  // -----------------------
   const [manualPaymentModalOpen, setManualPaymentModalOpen] = useState(false);
   const [manualPaymentMethod, setManualPaymentMethod] =
     useState<ManualMethod>("BTC");
 
   const [manualDropdownOpen, setManualDropdownOpen] = useState(false);
-  const [manualAmount, setManualAmount] = useState(""); // OMIX tokens
+  const [manualAmount, setManualAmount] = useState(""); // coin amount they pay
   const [manualEmail, setManualEmail] = useState("");
   const [manualReceiveAddress, setManualReceiveAddress] = useState("");
   const [isSubmittingManual, setIsSubmittingManual] = useState(false);
@@ -241,158 +364,144 @@ const promoMultiplier = promoActive ? 1 + promoDiscountPct / 100 : 1;
 
   const [manualSuccessOpen, setManualSuccessOpen] = useState(false);
   const [manualSuccessData, setManualSuccessData] = useState<{
-  method: ManualMethod;
-  coinAmount: number;
-  usdCost: number;
-  tokens: number;
-  email: string;
-  receiveAddress: string;
-} | null>(null);
-
+    method: ManualMethod;
+    coinAmount: number;
+    usdCost: number;
+    tokens: number;
+    email: string;
+    receiveAddress: string;
+  } | null>(null);
 
   const [manualEmailError, setManualEmailError] = useState("");
-
-// -----------------------
-// PRICE FETCH (ETH, USDT, USDC, BTC, SOL, XRP)
-// -----------------------
-useEffect(() => {
-  let cancelled = false;
-
-  async function fetchPrices() {
-    try {
-      const res = await fetch("/api/prices", { cache: "no-store" });
-      if (!res.ok) throw new Error(`Price fetch failed: ${res.status}`);
-
-      const data = await res.json();
-
-      if (cancelled) return;
-
-      setPrices({
-        eth: data.ethereum?.usd ?? 0,
-        usdt: data.tether?.usd ?? 1,
-        usdc: data["usd-coin"]?.usd ?? 1,
-        btc: data.bitcoin?.usd ?? 0,
-        sol: data.solana?.usd ?? 0,
-        xrp: data.ripple?.usd ?? 0,
-      });
-    } catch (err) {
-      if (!cancelled) {
-        console.error("Failed to fetch prices:", err);
-      }
-    }
-  }
-
-  fetchPrices();
-  const interval = setInterval(fetchPrices, 60_000);
-  return () => {
-    cancelled = true;
-    clearInterval(interval);
-  };
-}, []);
-
-
-
-
-
+  const [manualReceiveAddressError, setManualReceiveAddressError] =
+    useState("");
 
   // -----------------------
-  // LOAD MANUAL ADDRESSES FROM GOOGLE SHEET CONFIG
+  // PRICE FETCH
   // -----------------------
   useEffect(() => {
-    const url = "/api/address-config"; // proxy through Next.js backend
+    let cancelled = false;
 
-    const loadConfig = async () => {
+    async function fetchPrices() {
       try {
-        const res = await fetch(url);
-        if (!res.ok) {
-          throw new Error(`Config fetch failed with status ${res.status}`);
-        }
-        const csv = await res.text();
+        const res = await fetch("/api/prices", { cache: "no-store" });
+        if (!res.ok) throw new Error(`Price fetch failed: ${res.status}`);
 
-        const lines = csv
-          .split("\n")
-          .map((l) => l.trim())
-          .filter((l) => l.length > 0);
+        const data = await res.json();
+        if (cancelled) return;
 
-        if (lines.length < 2) {
-          console.warn("Address config CSV has no data rows, using fallback.");
-          return;
-        }
-
-        const headerLine = lines[0];
-        const headers = headerLine
-          .split(",")
-          .map((h) => h.trim().toLowerCase());
-
-        const coinIdx = headers.indexOf("coin");
-        const addressIdx = headers.indexOf("address");
-        const activeIdx = headers.indexOf("active");
-
-        if (coinIdx === -1 || addressIdx === -1) {
-          console.warn(
-            "Address config CSV missing 'coin' or 'address' columns – using fallback."
-          );
-          return;
-        }
-
-        const updated: Record<Exclude<ManualMethod, "CARD">, string> = {
-          ...FALLBACK_MANUAL_PAYMENT_ADDRESSES,
-        };
-
-        for (let i = 1; i < lines.length; i++) {
-          const row = lines[i];
-          const cols = row.split(",");
-
-          const rawCoin = (cols[coinIdx] || "").trim().toUpperCase();
-          const addr = (cols[addressIdx] || "").trim();
-          const rawActive =
-            activeIdx >= 0 ? (cols[activeIdx] || "").trim().toLowerCase() : "true";
-
-          if (!rawCoin || !addr) continue;
-
-          const isActive =
-            rawActive === "" ||
-            rawActive === "true" ||
-            rawActive === "1" ||
-            rawActive === "yes";
-
-          if (!isActive) continue;
-
-          if (rawCoin === "PROGRESS") {
-           const n = Number(addr);
-           if (Number.isFinite(n)) {
-           setProgressPercent(Math.max(0, Math.min(100, Math.round(n))));
-           }
-           continue;
-            }
-
-
-          if (
-            rawCoin === "BTC" ||
-            rawCoin === "SOL" ||
-            rawCoin === "XRP" ||
-            rawCoin === "ETH" ||
-            rawCoin === "USDT"
-          ) {
-            updated[rawCoin] = addr;
-          }
-        }
-
-        setManualAddresses(updated);
-        console.log("Loaded manual payment addresses from config:", updated);
+        setPrices({
+          eth: data.ethereum?.usd ?? 0,
+          usdt: data.tether?.usd ?? 1,
+          usdc: data["usd-coin"]?.usd ?? 1,
+          btc: data.bitcoin?.usd ?? 0,
+          sol: data.solana?.usd ?? 0,
+          xrp: data.ripple?.usd ?? 0,
+        });
       } catch (err) {
-        console.error(
-          "Failed to load manual payment address config – using fallback.",
-          err
-        );
+        if (!cancelled) console.error("Failed to fetch prices:", err);
       }
-    };
+    }
 
-    loadConfig();
+    fetchPrices();
+    const interval = setInterval(fetchPrices, 60_000);
+    return () => {
+      cancelled = true;
+      clearInterval(interval);
+    };
   }, []);
 
   // -----------------------
-  // COUNTDOWN TIMER + PRICE (FIXED)
+  // LOAD MANUAL ADDRESSES FROM GOOGLE SHEET CONFIG
+  // (BTC/SOL/XRP still come from here)
+  // -----------------------
+useEffect(() => {
+  let cancelled = false;
+  const url = "/api/address-config";
+
+  const loadConfig = async () => {
+    try {
+      // IMPORTANT: don't let this throw and disrupt UI
+      const res = await fetch(url, { cache: "no-store" }).catch((e) => {
+        console.warn("address-config fetch failed (using fallback):", e);
+        return null;
+      });
+
+      if (!res) return; // keep fallback
+      if (!res.ok) {
+        console.warn(`address-config not ok (${res.status}) - using fallback`);
+        return; // keep fallback
+      }
+
+      const csv = await res.text();
+      if (cancelled) return;
+
+      const lines = csv
+        .split("\n")
+        .map((l) => l.trim())
+        .filter((l) => l.length > 0);
+
+      if (lines.length < 2) return;
+
+      const headers = lines[0]
+        .split(",")
+        .map((h) => h.trim().toLowerCase());
+
+      const coinIdx = headers.indexOf("coin");
+      const addressIdx = headers.indexOf("address");
+      const activeIdx = headers.indexOf("active");
+
+      if (coinIdx === -1 || addressIdx === -1) return;
+
+      const updated: Record<Exclude<ManualMethod, "CARD">, string> = {
+        ...FALLBACK_MANUAL_PAYMENT_ADDRESSES,
+      };
+
+      for (let i = 1; i < lines.length; i++) {
+        const cols = lines[i].split(",");
+        const rawCoin = (cols[coinIdx] || "").trim().toUpperCase();
+        const addr = (cols[addressIdx] || "").trim();
+        const rawActive =
+          activeIdx >= 0 ? (cols[activeIdx] || "").trim().toLowerCase() : "true";
+
+        if (!rawCoin || !addr) continue;
+
+        const isActive =
+          rawActive === "" ||
+          rawActive === "true" ||
+          rawActive === "1" ||
+          rawActive === "yes";
+
+        if (!isActive) continue;
+
+        if (rawCoin === "PROGRESS") {
+          const n = Number(addr);
+          if (Number.isFinite(n)) {
+            setProgressPercent(Math.max(0, Math.min(100, Math.round(n))));
+          }
+          continue;
+        }
+
+        if (rawCoin === "BTC" || rawCoin === "SOL" || rawCoin === "XRP" || rawCoin === "ETH" || rawCoin === "USDT") {
+          updated[rawCoin as Exclude<ManualMethod, "CARD">] = addr;
+        }
+      }
+
+      setManualAddresses(updated);
+    } catch (err) {
+      // final safety net — never crash UI
+      console.warn("address-config parse error (using fallback):", err);
+    }
+  };
+
+  loadConfig();
+  return () => {
+    cancelled = true;
+  };
+}, []);
+
+  // -----------------------
+  // COUNTDOWN TIMER + PRICE
   // -----------------------
   const [timeLeft, setTimeLeft] = useState({
     days: "00",
@@ -401,7 +510,6 @@ useEffect(() => {
     seconds: "00",
   });
 
-  // Toast only when we enter a new 24h cycle (not every render)
   const lastNotifiedCycleRef = useRef<number>(-1);
 
   useEffect(() => {
@@ -409,11 +517,9 @@ useEffect(() => {
 
     const tick = () => {
       const now = Date.now();
-
       const raw = now - GLOBAL_START;
       const cyclesPassed = raw <= 0 ? 0 : Math.floor(raw / TWENTY_FOUR_HOURS_MS);
 
-      // Derive price from time (never drifts, never "only once")
       const price = Number(
         (INITIAL_PRICE * Math.pow(DAILY_MULT, cyclesPassed)).toFixed(4)
       );
@@ -422,7 +528,6 @@ useEffect(() => {
       setCurrentPrice(price);
       setNextPrice(next);
 
-      // Notify once per new cycle (skip on first paint)
       if (cyclesPassed !== lastNotifiedCycleRef.current) {
         if (lastNotifiedCycleRef.current !== -1) {
           toast.success(`💰 New presale price: $${price}`);
@@ -430,8 +535,8 @@ useEffect(() => {
         lastNotifiedCycleRef.current = cyclesPassed;
       }
 
-      // deadline for the NEXT increase
-      const nextDeadline = GLOBAL_START + (cyclesPassed + 1) * TWENTY_FOUR_HOURS_MS;
+      const nextDeadline =
+        GLOBAL_START + (cyclesPassed + 1) * TWENTY_FOUR_HOURS_MS;
       const dist = nextDeadline - now;
 
       const days = Math.floor(dist / (1000 * 60 * 60 * 24));
@@ -453,27 +558,27 @@ useEffect(() => {
   }, []);
 
   // -----------------------
-  // TOKEN CALC (main buy card)
+  // TOKEN CALC
   // -----------------------
   const recalcTokens = (
-  usd: number,
-  opts?: { bonusApplied?: boolean; referralUsed?: boolean; promoMultiplier?: number }
-) => {
-  let tokens = usd / currentPrice;
+    usd: number,
+    opts?: {
+      bonusApplied?: boolean;
+      referralUsed?: boolean;
+      promoMultiplier?: number;
+    }
+  ) => {
+    let tokens = usd / currentPrice;
 
-  // promo first (extra tokens)
-  tokens *= opts?.promoMultiplier ?? promoMultiplier;
+    tokens *= opts?.promoMultiplier ?? promoMultiplier;
+    if (opts?.bonusApplied ?? bonusApplied) tokens *= 1.25;
+    if (opts?.referralUsed ?? referralUsed) tokens *= 1.3;
 
-  // existing bonuses
-  if (opts?.bonusApplied ?? bonusApplied) tokens *= 1.25;
-  if (opts?.referralUsed ?? referralUsed) tokens *= 1.3;
-
-  return tokens;
-};
-
+    return tokens;
+  };
 
   // -----------------------
-  // INPUT HANDLING (main card)
+  // INPUT HANDLING
   // -----------------------
   const handleAmountChange = (val: string) => {
     setAmount(val);
@@ -491,7 +596,7 @@ useEffect(() => {
     if (currency === "USDC") usd = amountNum * prices.usdc;
 
     setUsdValue(usd);
-    setIsMinAmountValid(usd >= 249); // logic unchanged, text still says $250
+    setIsMinAmountValid(usd >= 0); // you set 1 for testing
     const tokens = recalcTokens(usd);
     setCoreAmount(tokens.toFixed(2));
   };
@@ -504,6 +609,12 @@ useEffect(() => {
       return;
     }
 
+    if (currency !== "ETH" && !isTokenSupportedOnChain) {
+  toast.error(`${currency} is not configured for this chain.`);
+  return;
+}
+
+
     const amountNum = Number(amount);
     let usd = 0;
     if (currency === "ETH") usd = amountNum * prices.eth;
@@ -511,15 +622,14 @@ useEffect(() => {
     if (currency === "USDC") usd = amountNum * prices.usdc;
 
     setUsdValue(usd);
-    setIsMinAmountValid(usd >= 249);
+    setIsMinAmountValid(usd >= 0);
     const tokens = recalcTokens(usd);
     setCoreAmount(tokens.toFixed(2));
- }, [currency, prices, amount, bonusApplied, referralUsed, currentPrice, promoMultiplier]);
-
+  }, [currency, prices, amount, bonusApplied, referralUsed, currentPrice, promoMultiplier, isTokenSupportedOnChain]);
 
 
   // -----------------------
-  // REFERRAL LINK DETECTION (URL ?ref=...)
+  // REFERRAL LINK DETECTION
   // -----------------------
   useEffect(() => {
     if (!isClient()) return;
@@ -534,137 +644,347 @@ useEffect(() => {
   }, []);
 
   // -----------------------
-  // ALLOWANCE CHECK
+  // BALANCE VALIDATION
   // -----------------------
   useEffect(() => {
-    if (!isClient() || !publicClient || !address) return;
+    if (!address) {
+      setInsufficientBalance(false);
+      setBuyBalanceError("");
+      return;
+    }
 
-    const checkAllowance = async () => {
-      try {
-        if (currency === "ETH") {
-          setIsApproved(true);
-          return;
-        }
+    const amt = Number(amount);
+    if (!amount || !Number.isFinite(amt) || amt <= 0) {
+      setInsufficientBalance(false);
+      setBuyBalanceError("");
+      return;
+    }
 
-        const tokenAddress =
-          currency === "USDT"
-            ? (TOKEN_ADDRESSES.USDT as `0x${string}`)
-            : (TOKEN_ADDRESSES.USDC as `0x${string}`);
+    if (currency === "ETH") {
+      const bal = ethBal.data?.value ?? 0n;
+      const needed = parseEther(amount || "0");
+      const ok = bal >= needed;
 
-        const decimals = 6;
-        const allowance = (await publicClient.readContract({
-          address: tokenAddress,
-          abi: ERC20ABI,
-          functionName: "allowance",
-          args: [address as `0x${string}`, PRESALE_ADDRESS as `0x${string}`],
-        })) as bigint;
+      setInsufficientBalance(!ok);
+      setBuyBalanceError(ok ? "" : "Insufficient ETH balance to complete this transfer.");
+      return;
+    }
 
-        if (!amount || Number(amount) === 0) {
-          setIsApproved(false);
-          return;
-        }
+    const bal = tokenBal.data?.value ?? 0n;
+const decimals =
+  TOKEN_DECIMALS_BY_CHAIN[chainId ?? 0]?.[currency as "USDT" | "USDC"] ?? 6;
 
-        const parsedNeeded = parseUnits(amount, decimals);
-        setIsApproved(allowance >= parsedNeeded);
-      } catch (err) {
-        console.warn("Failed to read allowance:", err);
-        setIsApproved(false);
-      }
+const needed = parseUnits(amount || "0", decimals);
+
+
+    const ok = bal >= needed;
+
+    setInsufficientBalance(!ok);
+    setBuyBalanceError(ok ? "" : `Insufficient ${currency} balance to complete this transfer.`);
+  }, [address, amount, currency, chainId, ethBal.data?.value, tokenBal.data?.value]);
+
+
+  // -----------------------
+  // MANUAL PAYMENT HELPERS
+  // -----------------------
+  const openManualPaymentModalFor = (m: "BTC" | "SOL" | "XRP") => {
+    setManualPaymentMethod(m);
+    setManualPaymentModalOpen(true);
+    setManualDropdownOpen(false);
+    setManualAmount("");
+    setManualEmail("");
+    setManualReceiveAddress(address ?? "");
+  };
+
+  const getManualEstimate = () => {
+    if (!manualAmount || isNaN(Number(manualAmount))) return null;
+
+    const coinAmount = Number(manualAmount);
+    if (coinAmount <= 0) return null;
+
+    let coinPrice = 0;
+    if (manualPaymentMethod === "BTC") coinPrice = prices.btc;
+    if (manualPaymentMethod === "ETH") coinPrice = prices.eth;
+    if (manualPaymentMethod === "USDT") coinPrice = prices.usdt;
+    if (manualPaymentMethod === "SOL") coinPrice = prices.sol;
+    if (manualPaymentMethod === "XRP") coinPrice = prices.xrp;
+    if (manualPaymentMethod === "CARD") return null;
+
+    if (!coinPrice || !currentPrice) return null;
+
+    const usdCost = coinAmount * coinPrice;
+    const tokens = recalcTokens(usdCost, {
+      bonusApplied,
+      referralUsed,
+      promoMultiplier,
+    });
+
+    return { usdCost, coinAmount, tokens };
+  };
+  const manualEstimate = getManualEstimate();
+  const isManualMinValid = !manualEstimate || manualEstimate.usdCost >= 250;
+
+
+
+
+  // ETH/USDT manual address should be the chain treasury (EVM)
+  const resolveManualAddress = (): string => {
+    if ((manualPaymentMethod === "ETH" || manualPaymentMethod === "USDT") && isSupportedChain) {
+      return treasury!;
+    }
+    return manualAddresses[manualPaymentMethod as Exclude<ManualMethod, "CARD">] || "";
+  };
+
+  const manualAddress = manualPaymentMethod === "CARD" ? "" : resolveManualAddress();
+
+  const handleManualSubmit = async () => {
+    if (!manualAmount || isNaN(Number(manualAmount))) {
+      toast.error("Please enter how much you want to pay.");
+      return;
+    }
+
+    if (!manualEmail) {
+      setManualEmailError("Please enter your email.");
+      return;
+    }
+
+    // Require receive address (EVM) because OMIX is EVM token
+    const receiveAddr = (manualReceiveAddress || address || "").trim();
+    if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
+      setManualReceiveAddressError(
+        "Enter a correct EVM/ERC20 address (your tokens will be sent to this address)."
+      );
+      return;
+    }
+
+    // For ETH/USDT manual, require supported chain (so you show correct treasury address)
+    if ((manualPaymentMethod === "ETH" || manualPaymentMethod === "USDT") && !isSupportedChain) {
+      toast.error("Unsupported chain. Please switch to Ethereum, Base or BSC.");
+      return;
+    }
+
+    const estimate = manualEstimate;
+    if (!estimate) {
+      toast.error("Could not calculate estimate. Please try again.");
+      return;
+    }
+
+    if (estimate.usdCost < 250) {
+      toast.error("Minimum manual purchase is $250.");
+      return;
+    }
+
+    // Payload mapped to your “final columns” style
+    const payload = {
+      status: "pending",               // ALWAYS filled
+      paymentMode: "manual",
+      method: manualPaymentMethod,     // BTC/SOL/XRP/ETH/USDT
+      chainId: chainId ?? null,
+      txHash: null,
+      toAddress: manualAddress || null,
+
+      omixAmount: estimate.tokens,
+      estimatedCoinAmount: Number(manualAmount),
+      estimatedUsdCost: estimate.usdCost,
+
+      email: manualEmail,
+      userWallet: address ?? null,
+      receiveAddress: receiveAddr,
+
+      referralCode: referralCode || null,
     };
-
-    setIsApproved(false);
-    checkAllowance();
-  }, [address, currency, amount, publicClient]);
-
-  // -----------------------
-  // BUY FUNCTION (ETH/USDT/USDC)
-  // -----------------------
-  const handleBuy = async () => {
-    if (!amount) return;
-
+    
     try {
-      if (currency === "ETH") {
-        toast.loading("🕓 Sending ETH transaction...", { id: "buy" });
-        await writeContract({
-          address: PRESALE_ADDRESS,
-          abi: PresaleABI,
-          functionName: "buyToken",
-          args: ["0x0000000000000000000000000000000000000000", BigInt(0)],
-          value: parseEther(amount),
-        });
-        toast.success("✅ ETH purchase sent!", { id: "buy" });
-        return;
-      }
+      setIsSubmittingManual(true);
 
-      const tokenAddress =
-        currency === "USDT"
-          ? (TOKEN_ADDRESSES.USDT as `0x${string}`)
-          : (TOKEN_ADDRESSES.USDC as `0x${string}`);
-      const decimals = 6;
-      const parsedAmount = parseUnits(amount, decimals);
+      // Reuse your existing Zapier forward route
+      const res = await fetch("/api/manual-payment", {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(payload),
+});
 
-      if (!publicClient) {
-        console.warn("Public client not ready yet — skipping allowance check");
-        return;
-      }
+const data = await res.json().catch(() => null);
+console.log("manual-payment API response (manual submit):", res.status, data);
 
-      let currentAllowance = 0n;
-      if (isClient() && publicClient) {
-        currentAllowance = (await publicClient.readContract({
-          address: tokenAddress,
-          abi: ERC20ABI,
-          functionName: "allowance",
-          args: [address as `0x${string}`, PRESALE_ADDRESS as `0x${string}`],
-        })) as bigint;
-      }
+if (!res.ok || !data?.ok) throw new Error("Request failed");
 
-      if (currentAllowance < parsedAmount) {
-        setIsApproving(true);
-        toast.loading(`🕓 Approving ${currency}...`, { id: "approve" });
 
-        if (currency === "USDT" && currentAllowance > 0n) {
-          await writeContract({
-            address: tokenAddress,
-            abi: ERC20ABI,
-            functionName: "approve",
-            args: [PRESALE_ADDRESS, 0],
-            gas: BigInt(100000),
-          });
-          await new Promise((r) => setTimeout(r, 3000));
-        }
+      toast.success(
+        `Manual payment submitted: ~${estimate.tokens.toFixed(2)} OMIX for ${Number(manualAmount)} ${manualPaymentMethod}.`
+      );
 
-        await writeContract({
-          address: tokenAddress,
-          abi: ERC20ABI,
-          functionName: "approve",
-          args: [PRESALE_ADDRESS, parsedAmount],
-        });
-
-        toast.success(`✅ ${currency} approved!`, { id: "approve" });
-        setIsApproved(true);
-        setIsApproving(false);
-        return;
-      }
-
-      toast.loading(`🛒 Buying with ${currency}...`, { id: "buy" });
-      await writeContract({
-        address: PRESALE_ADDRESS,
-        abi: PresaleABI,
-        functionName: "buyToken",
-        args: [tokenAddress, parsedAmount],
+      setManualSuccessData({
+        method: manualPaymentMethod,
+        coinAmount: Number(manualAmount),
+        usdCost: estimate.usdCost,
+        tokens: estimate.tokens,
+        email: manualEmail,
+        receiveAddress: receiveAddr,
       });
 
-      toast.success(`🎉 Purchase sent with ${currency}!`, { id: "buy" });
+      setManualSuccessOpen(true);
+      setManualPaymentModalOpen(false);
+
+      setManualAmount("");
+      setManualEmail("");
+      setManualReceiveAddress("");
     } catch (err) {
-      console.error("Buy failed:", err);
-      toast.error("❌ Transaction failed — check your gas or try again.");
+      console.error("Manual payment submit failed", err);
+      toast.error("Could not submit your request. Please try again.");
+    } finally {
+      setIsSubmittingManual(false);
     }
   };
 
+  const handleCopyManualAddress = () => {
+    if (!manualAddress) return;
+    navigator.clipboard.writeText(manualAddress);
+    toast.success(`${manualPaymentMethod} address copied!`);
+  };
+
+  const getManualQrValue = () => {
+    switch (manualPaymentMethod) {
+      case "BTC":
+        return manualAddress ? `bitcoin:${manualAddress}` : "";
+      case "SOL":
+        return manualAddress || "";
+      case "XRP":
+        return manualAddress || "";
+      default:
+        return manualAddress;
+    }
+  };
+
+  const manualTheme =
+    manualPaymentMethod === "CARD"
+      ? MANUAL_THEMES.BTC
+      : MANUAL_THEMES[manualPaymentMethod as Exclude<ManualMethod, "CARD">];
+
+const sendErc20ToTreasury = async (symbol: "USDT" | "USDC") => {
+  if (!address) throw new Error("No wallet connected");
+  if (!treasury) throw new Error("Missing treasury for this chain");
+  if (!chainId) throw new Error("Missing chainId");
+
+  const token = TOKENS_BY_CHAIN[chainId]?.[symbol];
+
+  if (!token || !isAddress(token)) {
+    toast.error(`${symbol} is not configured for this chain.`);
+    throw new Error(`${symbol} token missing for chainId ${chainId}`);
+  }
+
+  const decimals = TOKEN_DECIMALS_BY_CHAIN[chainId]?.[symbol] ?? 6;
+  const parsedAmount = parseUnits(amount || "0", decimals);
+
+  const txHash = await writeContractAsync({
+    address: token,
+    abi: ERC20ABI,
+    functionName: "transfer",
+    args: [treasury, parsedAmount],
+  });
+
+  setLastTxHash(txHash);
+  setLastTxLabel(`${symbol} transfer`);
+
+  const res = await fetch("/api/manual-payment", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      status: "pending",
+      paymentMode: "auto",
+      method: symbol,
+      chainId,
+      txHash,
+      toAddress: treasury,
+      userWallet: address,
+      receiveAddress: address,
+      estimatedCoinAmount: Number(amount),
+      estimatedUsdCost: usdValue,
+      omixAmount: Number(coreAmount || "0"),
+      referralCode: referralCode || null,
+      email: null,
+    }),
+  });
+
+  const data = await res.json().catch(() => null);
+  console.log("manual-payment API response (auto transfer):", res.status, data);
+
+  toast.success(`✅ ${symbol} sent!`, { id: "buy" });
+};
+
+
+
+
   // -----------------------
-  // REFERRAL GENERATION
+  // AUTO BUY (OFF-CHAIN ALLOCATION, ON-CHAIN TRANSFER)
+  // -----------------------
+  const handleBuy = async () => {
+    setBuyTried(true);
+    if (!amount) return;
+
+    // For ETH/USDT/USDC, require chain treasury set
+    if (!isSupportedChain) {
+      toast.error("Unsupported chain. Please switch to Ethereum, Base or BSC.");
+      return;
+    }
+if (currency !== "ETH" && !isTokenSupportedOnChain) {
+  toast.error(`${currency} is not configured for this chain.`);
+  return;
+}
+
+
+
+
+
+    if (insufficientBalance) {
+      toast.error(buyBalanceError || "Insufficient balance.");
+      return;
+    }
+
+
+
+try {
+  toast.loading("🕓 Sending transfer...", { id: "buy" });
+
+  let hash: `0x${string}` | null = null;
+
+  if (currency === "ETH") {
+    hash = await sendTransactionAsync({
+      to: treasury!,
+      value: parseEther(amount),
+    });
+  } else {
+    // IMPORTANT: if you only want USDT/USDC on Ethereum mainnet, check FIRST
+ 
+
+    await sendErc20ToTreasury(currency as "USDT" | "USDC");
+    return;
+  }
+
+  // ETH continues here (only ETH reaches this point)
+  if (!hash) throw new Error("No tx hash returned");
+  setLastTxHash(hash);
+  setLastTxLabel("ETH transfer");
+
+  // ... your fetch("/api/manual-payment") for ETH here ...
+
+  toast.success("✅ Transfer sent!", { id: "buy" });
+} catch (err) {
+  console.error(err);
+  toast.error("❌ Transfer failed.", { id: "buy" });
+}
+
+  };
+
+  // -----------------------
+  // Referral generation (frontend)
   // -----------------------
   const [hasPurchased, setHasPurchased] = useState(false);
+
+  // Mark as purchased after user successfully sends (auto) or submits manual
+  useEffect(() => {
+    if (buySuccessData?.txHash) setHasPurchased(true);
+  }, [buySuccessData?.txHash]);
 
   const handleGenerateReferral = () => {
     if (!address) {
@@ -681,9 +1001,6 @@ useEffect(() => {
     toast.success("Referral link copied!");
   };
 
-  // -----------------------
-  // REFERRAL SUBMIT (FRONTEND ONLY, +30% DISPLAY)
-  // -----------------------
   const handleSubmitReferral = () => {
     let code = referralCode.trim();
 
@@ -719,234 +1036,69 @@ useEffect(() => {
   };
 
   // -----------------------
-  // PURCHASE DETECTION (auto unlock referral generation)
+  // Derived UI flags
   // -----------------------
-  useEffect(() => {
-    if (!isClient() || !publicClient || !address) return;
+  const canSubmit =
+  !!amount && isMinAmountValid && !insufficientBalance && !isPending && isSupportedChain && isTokenSupportedOnChain;
 
-    const unwatch = publicClient.watchContractEvent({
-      address: PRESALE_ADDRESS,
-      abi: PresaleABI,
-      eventName: "BuyToken",
-      onLogs: (logs) => {
-        logs.forEach((log: any) => {
-          const buyer = log?.args?.buyer?.toLowerCase?.();
-          if (buyer && buyer === address.toLowerCase()) {
-            setHasPurchased(true);
-            toast.success("🎉 Purchase detected — referral unlocked!");
-          }
-        });
-      },
-    });
-
-    return () => unwatch?.();
-  }, [address, publicClient]);
-
-  // -----------------------
-  // MANUAL PAYMENT HELPERS
-  // -----------------------
-  const openManualPaymentModalFor = (m: "BTC" | "SOL" | "XRP") => {
-    setManualPaymentMethod(m);
-    setManualPaymentModalOpen(true);
-    setManualDropdownOpen(false);
-    setManualAmount("");
-    setManualEmail("");
-    setManualReceiveAddress(address ?? "");
-  };
-
-  const getManualEstimate = () => {
-    if (!manualAmount || isNaN(Number(manualAmount))) return null;
-
-    const coinAmount = Number(manualAmount);
-    if (coinAmount <= 0) return null;
-
-    let coinPrice = 0;
-    if (manualPaymentMethod === "BTC") coinPrice = prices.btc;
-    if (manualPaymentMethod === "ETH") coinPrice = prices.eth;
-    if (manualPaymentMethod === "USDT") coinPrice = prices.usdt;
-    if (manualPaymentMethod === "SOL") coinPrice = prices.sol;
-    if (manualPaymentMethod === "XRP") coinPrice = prices.xrp;
-    if (manualPaymentMethod === "CARD") return null; // no estimate for card
-
-    if (!coinPrice || !currentPrice) return null;
-
-    // USD value of the BTC/SOL/XRP/ETH/USDT the user pays
-    const usdCost = coinAmount * coinPrice;
-
-    // Reuse your main recalcTokens so manual flow behaves the same
-    const tokens = recalcTokens(usdCost, {
-      bonusApplied,
-      referralUsed,
-      promoMultiplier,
-    });
-
-    return { usdCost, coinAmount, tokens };
-  };
-
-  const manualEstimate = getManualEstimate();
-
-  const handleManualSubmit = async () => {
-    if (!manualAmount || isNaN(Number(manualAmount))) {
-      toast.error("Please enter how much you want to pay.");
-      return;
-    }
-
-    if (!manualEmail) {
-      setManualEmailError("Please enter your email.");
-      return;
-    }
-
-    const estimate = manualEstimate; // from getManualEstimate()
-
-    if (!estimate) {
-      toast.error("Could not calculate estimate. Please try again.");
-      return;
-    }
-
-    if (estimate.usdCost < 250) {
-      toast.error("Minimum manual purchase is $250.");
-      return;
-    }
-
-    const receiveAddr = (manualReceiveAddress || address || "").trim();
-if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
-  toast.error("Please enter a valid ERC20 address (0x...).");
-  return;
-}
+const disabledReason = !amount
+  ? "No amount"
+  : !isMinAmountValid
+  ? "Min invalid"
+  : !isSupportedChain
+  ? "Unsupported chain / missing treasury"
+  : !isTokenSupportedOnChain
+  ? `${currency} not configured on this chain`
+  : insufficientBalance
+  ? "Insufficient balance"
+  : isPending
+  ? "Pending"
+  : null;
 
 
-    const payload = {
-      method: manualPaymentMethod,
-      // OMIX tokens the user should receive (with referral/bonus applied)
-      omixAmount: estimate.tokens,
-      // How much BTC/SOL/XRP/ETH/USDT they say they will pay
-      estimatedCoinAmount: Number(manualAmount),
-      // USD value of that payment
-      estimatedUsdCost: estimate.usdCost,
-      email: manualEmail,
-      receiveAddress: receiveAddr,
-      userWallet: address ?? null,
-      referralCode: referralCode || null,
-    };
-
-    try {
-      setIsSubmittingManual(true);
-
-      const res = await fetch("/api/manual-payment", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res.ok) {
-        throw new Error("Request failed");
-      }
-
-      toast.success(
-        `Manual payment request submitted: ~${estimate.tokens.toFixed(
-          2
-        )} OMIX for ${Number(
-          manualAmount
-        )} ${manualPaymentMethod}. We’ll verify and contact you.`
-      );
-
-      setManualSuccessData({
-  method: manualPaymentMethod,
-  coinAmount: Number(manualAmount),
-  usdCost: estimate.usdCost,
-  tokens: estimate.tokens,
-  email: manualEmail,
-  receiveAddress: receiveAddr,
-});
-
-      setManualSuccessOpen(true);
-      setManualPaymentModalOpen(false);
-
-      setManualAmount("");
-      setManualEmail("");
-      setManualReceiveAddress("");
-    } catch (err) {
-      console.error("Manual payment submit failed", err);
-      toast.error("Could not submit your request. Please try again.");
-    } finally {
-      setIsSubmittingManual(false);
-    }
-  };
-
-  const manualAddress =
-    manualPaymentMethod === "CARD"
-      ? ""
-      : manualAddresses[manualPaymentMethod as Exclude<ManualMethod, "CARD">];
-
-  const handleCopyManualAddress = () => {
-    if (!manualAddress) return;
-    navigator.clipboard.writeText(manualAddress);
-    toast.success(`${manualPaymentMethod} address copied!`);
-  };
-
-  const getManualQrValue = () => {
-    switch (manualPaymentMethod) {
-      case "BTC":
-        return manualAddress ? `bitcoin:${manualAddress}` : "";
-      case "SOL":
-        return manualAddress || "";
-      case "XRP":
-        return manualAddress || "";
-      default:
-        return manualAddress;
-    }
-  };
-
-  const manualTheme =
-    manualPaymentMethod === "CARD"
-      ? MANUAL_THEMES.BTC
-      : MANUAL_THEMES[manualPaymentMethod as Exclude<ManualMethod, "CARD">];
-
-  const isManualMinValid = !manualEstimate || manualEstimate.usdCost >= 250;
+  const buyErrorText = !amount
+    ? "Enter an amount to continue."
+    : !isMinAmountValid
+    ? "Minimum purchase is $250."
+    : !isSupportedChain
+    ? "Unsupported chain. Switch to Ethereum, Base or BSC."
+    : insufficientBalance
+    ? buyBalanceError || "Insufficient balance."
+    : null;
 
   // -----------------------
   // UI
   // -----------------------
   return (
     <>
-    
       <div className="grid gap-5 lg:grid-cols-[minmax(0,1.5fr),minmax(0,1.1fr)] text-white">
-
-        
         {/* LEFT: BUY CONSOLE */}
-        <div
-  id="buy"
-  className="neon-card neon-card--soft p-4 md:p-5"
->
-  
-
-        <div className="pointer-events-none -mx-4 -mt-4 mb-2">
-  <div className="h-[2px] bg-[linear-gradient(90deg,transparent,rgba(163,230,53,0.75),transparent)] opacity-70" />
-  <div className="h-[10px] bg-[radial-gradient(circle_at_center,rgba(163,230,53,0.18),transparent_70%)] blur-[2px]" />
-</div>
+        <div id="buy" className="neon-card neon-card--soft p-4 md:p-5">
+          <div className="pointer-events-none -mx-4 -mt-4 mb-2">
+            <div className="h-[2px] bg-[linear-gradient(90deg,transparent,rgba(163,230,53,0.75),transparent)] opacity-70" />
+            <div className="h-[10px] bg-[radial-gradient(circle_at_center,rgba(163,230,53,0.18),transparent_70%)] blur-[2px]" />
+          </div>
 
           <div className="flex items-center justify-between mb-3">
             <div className="mb-2">
               <h2 className="text-lg font-semibold">Buy OMIX</h2>
-              <p className="text-xs text-gray-400">
-                Use ETH, USDT, USDC or manual payment methods to join the
-                presale.
-              </p>
+             
             </div>
-            
           </div>
+
+          {/* Chain warning */}
+          {isConnected && !isSupportedChain && (
+            <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+              Unsupported chain. Please switch to <b>Ethereum</b>, <b>Base</b> or{" "}
+              <b>BSC</b>.
+            </div>
+          )}
 
           {/* Currency Selector */}
           <div className="mt-2 flex flex-wrap gap-2">
             {[
-              {
-                symbol: "ETH",
-                icon: <SiEthereum />,
-              },
-              {
-                symbol: "USDT",
-                icon: <SiTether />,
-              },
+              { symbol: "ETH", icon: <SiEthereum /> },
+              { symbol: "USDT", icon: <SiTether /> },
               {
                 symbol: "USDC",
                 icon: (
@@ -961,7 +1113,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
             ].map(({ symbol, icon }) => (
               <button
                 key={symbol}
-                onClick={() => setCurrency(symbol)}
+                onClick={() => setCurrency(symbol as any)}
                 className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
                   currency === symbol
                     ? "bg-lime-400/10 border-lime-400 text-lime-200"
@@ -973,14 +1125,34 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
               </button>
             ))}
 
-            {/* Manual payment shortcut */}
             <button
               onClick={() => openManualPaymentModalFor("BTC")}
-              className="ml-auto text-[11px] underline text-cyan-300 hover:text-cyan-200"
+              className={`
+                ml-auto
+                flex items-center gap-2
+                px-3 py-1.5
+                rounded-lg
+                text-xs font-medium
+                border transition-all
+                bg-gray-900/70 border-gray-700 text-gray-200
+                hover:bg-gray-800/70 hover:border-gray-600
+                focus:outline-none focus:ring-2 focus:ring-lime-400/30
+                shadow-[0_0_0_1px_rgba(163,230,53,0.10)]
+              `}
             >
-              Manual payment options
+              <span className="inline-flex h-4 w-4 items-center justify-center rounded-md bg-lime-400/10 border border-lime-400/20 text-lime-300">
+                <SiBitcoin className="text-[12px]" />
+              </span>
+                Other payment methods
+
+              <span className="hidden sm:inline text-[10px] text-gray-400">
+                (BTC • SOL • XRP • Card)
+              </span>
             </button>
           </div>
+
+         
+  
 
           {/* Inputs */}
           <div className="mt-4 space-y-3">
@@ -990,6 +1162,8 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
               </label>
               <input
                 type="number"
+                inputMode="decimal"
+                step="any"
                 value={amount}
                 onChange={(e) => handleAmountChange(e.target.value)}
                 className="w-full rounded-lg bg-gray-950/80 border border-gray-700 px-3 py-2.5 text-sm text-white focus:ring-2 focus:ring-lime-400 outline-none"
@@ -1001,7 +1175,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
               {usdValue > 0 && (
                 <p className="mt-1 text-[11px] text-gray-400">
                   ≈{" "}
-                  <span className="text-gray-200">
+                  <span className="text-gray-200 tabular-nums">
                     ${usdValue.toFixed(2)} USD
                   </span>
                 </p>
@@ -1022,22 +1196,22 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                   type="text"
                   value={coreAmount}
                   readOnly
-                  className="w-full rounded-lg bg-gray-950/80 border border-gray-700 px-3 py-2.5 text-sm text-white"
+                  className="w-full rounded-lg bg-gray-950/80 border border-gray-700 px-3 py-2.5 text-sm text-white tabular-nums"
                 />
               </div>
+
               {referralUsed && (
                 <p className="text-[11px] text-green-400 mt-1">
-                  🎉 Referral bonus active: +30% OMIX displayed here. Bonus
-                  tokens will be sent after manual verification.
+                  🎉 Referral bonus active: +30% OMIX displayed here.
                 </p>
               )}
+
               {promoActive && (
-  <p className="text-[11px] text-emerald-300">
-    ✅ Promo applied – this OMIX amount already includes your +{promoDiscountPct}%.
-  </p>
-)}
-
-
+                <p className="text-[11px] text-emerald-300">
+                  ✅ Promo applied – this OMIX amount already includes your +
+                  {promoDiscountPct}%.
+                </p>
+              )}
             </div>
           </div>
 
@@ -1060,34 +1234,70 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
             ) : (
               <button
                 onClick={handleBuy}
-                disabled={isPending || isApproving || !isMinAmountValid}
+                disabled={!canSubmit}
                 className={`w-full font-semibold py-2.5 rounded-lg text-sm transition-all ${
-                  isPending || isApproving
+                  isPending
                     ? "bg-gray-600 cursor-wait text-gray-200"
-                    : isMinAmountValid
+                    : canSubmit
                     ? "bg-lime-400 hover:bg-lime-300 text-black"
                     : "bg-lime-400/40 text-black/60 cursor-not-allowed"
                 }`}
               >
-                {isPending
-                  ? "Processing..."
-                  : isApproving
-                  ? `Approving ${currency}...`
-                  : currency === "ETH"
-                  ? "Buy with ETH"
-                  : !isApproved
-                  ? `Approve ${currency}`
-                  : `Buy with ${currency}`}
+                                {isPending ? "Processing..." : `Buy with ${currency}`}
+
               </button>
             )}
-            <p className="mt-2 text-[11px] text-gray-400 text-center">
-  Transactions are executed on-chain. No custody. No approvals beyond purchase.
-</p>
 
-              
+            {isConnected && insufficientBalance && (
+              <p className="text-[11px] text-red-400 mt-1 animate-pulse text-center">
+                {buyBalanceError || "Insufficient balance."}
+              </p>
+            )}
+
+            {isConnected && buyTried && buyErrorText && (
+              <p className="mt-2 text-[11px] text-red-400 text-center animate-pulse">
+                {buyErrorText}
+              </p>
+            )}
+
+            {lastTxHash && (
+              <div className="mt-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-gray-300">
+                <div className="flex items-center justify-between">
+                  <span>{lastTxLabel || "Transaction"}</span>
+                  <span
+                    className={
+                      txReceipt.isSuccess
+                        ? "text-lime-300"
+                        : txReceipt.isError
+                        ? "text-red-300"
+                        : "text-amber-300"
+                    }
+                  >
+                    {txReceipt.isSuccess
+                      ? "Confirmed"
+                      : txReceipt.isError
+                      ? "Failed"
+                      : "Pending"}
+                  </span>
+                </div>
+                {txUrl && (
+                  <a
+                    href={txUrl}
+                    className="mt-1 inline-flex text-cyan-300 hover:text-cyan-200"
+                    target="_blank"
+                    rel="noreferrer"
+                  >
+                    View on explorer
+                  </a>
+                )}
+              </div>
+            )}
+
+            
+
             <div className="flex justify-between text-[11px] text-gray-400 mt-2">
               <a
-                href="https://weewux.com/howtobuy"
+                href="https://weewux.com/how-to-buy-omix/"
                 className="hover:text-lime-300"
                 target="_blank"
                 rel="noreferrer"
@@ -1095,7 +1305,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                 How to Buy
               </a>
               <a
-                href="https://weewux.com/referral"
+                href="https://weewux.com/earn-more-with-omix-referral/"
                 className="hover:text-lime-300"
                 target="_blank"
                 rel="noreferrer"
@@ -1110,7 +1320,6 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
         <div className="space-y-4">
           {/* Presale Metrics */}
           <div className="neon-card neon-card--hero p-4 md:p-5">
-
             <div className="flex items-center justify-between mb-3">
               <div>
                 <p className="text-xs uppercase tracking-[0.2em] text-gray-500">
@@ -1160,28 +1369,27 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
               </div>
             </div>
 
-            {/* Progress (still static 67% placeholder for now) */}
+            {/* Progress */}
             <div className="mt-1">
               <div className="flex justify-between text-[11px] text-gray-400 mb-1">
                 <span>Presale progress</span>
-                <span className="text-cyan-300 font-semibold">{progressPercent}% sold
-            </span>
+                <span className="text-cyan-300 font-semibold">
+                  {progressPercent}% sold
+                </span>
               </div>
               <div className="relative w-full bg-gray-900/80 rounded-full h-2.5 overflow-hidden">
                 <motion.div
-  initial={{ width: "0%" }}
-  animate={{ width: `${progressPercent}%` }}
-  transition={{ duration: 1.8, ease: "easeInOut" }}
-  className="h-2.5 rounded-full bg-gradient-to-r from-lime-400 via-cyan-400 to-purple-500"
-/>
+                  initial={{ width: "0%" }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 1.8, ease: "easeInOut" }}
+                  className="h-2.5 rounded-full bg-gradient-to-r from-lime-400 via-cyan-400 to-purple-500"
+                />
               </div>
-              
             </div>
           </div>
 
           {/* Referral Center */}
           <div className="neon-card neon-card--soft p-4 md:p-5">
-
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold">Referral Center</h3>
@@ -1222,7 +1430,6 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                 Your referral link
               </label>
               <div className="flex flex-col sm:flex-row gap-2">
-
                 <input
                   type="text"
                   readOnly
@@ -1241,9 +1448,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                       setTimeout(() => setShowReferralNotice(false), 4000);
                       return;
                     }
-                    generatedReferral
-                      ? handleCopyReferral()
-                      : handleGenerateReferral();
+                    generatedReferral ? handleCopyReferral() : handleGenerateReferral();
                   }}
                   className="w-full sm:w-auto px-3 md:px-4 py-2 rounded-md bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-xs md:text-sm"
                 >
@@ -1252,8 +1457,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
               </div>
               {showReferralNotice && (
                 <p className="mt-1 text-[11px] text-yellow-400">
-                  ⚠️ You need to purchase OMIX before generating a referral
-                  link.
+                  ⚠️ You need to purchase OMIX before generating a referral link.
                 </p>
               )}
             </div>
@@ -1280,7 +1484,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                 <p className="text-sm text-gray-100">
                   You’ve unlocked{" "}
                   <span className="font-bold">+30% more OMIX</span> on this
-                  purchase. Bonus tokens will be sent after manual verification.
+                  purchase.
                 </p>
               </div>
             </div>
@@ -1298,18 +1502,14 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
       {/* Manual Payment Modal */}
       {manualPaymentModalOpen && (
         <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-3 sm:p-6 overflow-y-auto hide-scrollbar">
-
-
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className={`relative w-full max-w-md rounded-2xl bg-gradient-to-br from-[#050712] ${manualTheme.bgVia} to-black/80 border ${manualTheme.border} shadow-2xl p-3 sm:p-4 md:p-5 text-white max-h-[calc(100dvh-1.5rem)] overflow-y-auto hide-scrollbar`}
           >
-            {/* Close button */}
             <button
               onClick={() => setManualPaymentModalOpen(false)}
               className="absolute right-2 top-2 z-20 flex h-10 w-10 items-center justify-center rounded-full bg-black/50 text-gray-200 hover:text-white hover:bg-black/70 text-2xl"
-
             >
               ×
             </button>
@@ -1322,7 +1522,6 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
             </p>
 
             {/* Method selector */}
-            {/* Row 1: BTC / USDT / ETH */}
             <div className="grid grid-cols-3 gap-2 mb-2">
               {(["BTC", "USDT", "ETH"] as const).map((m) => {
                 const isActive = manualPaymentMethod === m;
@@ -1352,7 +1551,6 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
               })}
             </div>
 
-            {/* Row 2: SOL / XRP / CARD */}
             <div className="grid grid-cols-3 gap-2 mb-3">
               {(["SOL", "XRP", "CARD"] as const).map((m) => {
                 const isActive = manualPaymentMethod === m;
@@ -1368,7 +1566,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                 const handleClick = () => {
                   if (m === "CARD") {
                     window.open(
-                      "https://weewux.com/how-to-buy-with-card",
+                      "https://weewux.com/buy-omix-tokens-using-a-credit-or-debit-card/",
                       "_blank"
                     );
                     return;
@@ -1416,12 +1614,17 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                   <button
                     onClick={handleCopyManualAddress}
                     className="shrink-0 whitespace-nowrap px-3 py-2 rounded-md bg-white/90 text-black text-xs font-semibold hover:bg-white"
-
                   >
                     Copy
                   </button>
                 </div>
               </div>
+
+              {(manualPaymentMethod === "ETH" || manualPaymentMethod === "USDT") && !isSupportedChain && (
+                <p className="mt-2 text-[11px] text-red-300 text-center">
+                  Switch to Ethereum/Base/BSC to get the correct treasury address.
+                </p>
+              )}
             </div>
 
             {/* Form fields */}
@@ -1432,6 +1635,8 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                 </label>
                 <input
                   type="number"
+                  inputMode="decimal"
+                  step="any"
                   value={manualAmount}
                   onChange={(e) => setManualAmount(e.target.value)}
                   placeholder={
@@ -1454,7 +1659,7 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                   <div className="mt-1 text-[11px] text-gray-300 space-y-0.5">
                     <p>
                       Tokens you receive:{" "}
-                      <span className="font-semibold">
+                      <span className="font-semibold tabular-nums">
                         {manualEstimate.tokens.toFixed(2)} OMIX
                       </span>
                       {referralUsed && (
@@ -1463,16 +1668,14 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                         </span>
                       )}
                       {promoActive && (
-                    <span className="text-[10px] text-amber-200 ml-1">
-                    (+{promoDiscountPct}% promo)
-                      </span>
+                        <span className="text-[10px] text-amber-200 ml-1">
+                          (+{promoDiscountPct}% promo)
+                        </span>
                       )}
-
-
                     </p>
                     <p>
                       Approx. USD value:{" "}
-                      <span className="text-gray-200">
+                      <span className="text-gray-200 tabular-nums">
                         ~${manualEstimate.usdCost.toFixed(2)}
                       </span>
                     </p>
@@ -1511,28 +1714,36 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
               </div>
 
               <div>
-  <label className="block text-xs text-gray-300 mb-1">
-    ERC20 receive address
-  </label>
-  <input
-    type="text"
-    value={manualReceiveAddress}
-    onChange={(e) => setManualReceiveAddress(e.target.value)}
-    placeholder="Your OMIX tokens will be sent to this address (0x...)"
-    className={`w-full rounded-md bg-gray-900/80 border border-gray-700 px-3 py-2 text-xs text-white focus:ring-2 ${manualTheme.ring}`}
-  />
-  <p className=" text-[10px] text-gray-400 mt-1">
-  Make sure this is an EVM address you control (Ethereum / ERC20 compatible).
-</p>
+                <label className="block text-xs text-gray-300 mb-1">
+                  ERC20 receive address
+                </label>
+                <input
+                  type="text"
+                  value={manualReceiveAddress}
+                  onChange={(e) => {
+                    setManualReceiveAddress(e.target.value);
+                    if (manualReceiveAddressError)
+                      setManualReceiveAddressError("");
+                  }}
+                  placeholder="Your OMIX tokens will be sent to this address (0x...)"
+                  className={`w-full rounded-md bg-gray-900/80 px-3 py-2 text-xs text-white focus:ring-2 ${manualTheme.ring} border ${
+                    manualReceiveAddressError ? "border-red-500" : "border-gray-700"
+                  }`}
+                />
 
-  
-</div>
-
+                {manualReceiveAddressError && (
+                  <p className="text-[11px] text-red-400 mt-1 animate-pulse">
+                    {manualReceiveAddressError}
+                  </p>
+                )}
+              </div>
             </div>
 
             <button
               onClick={handleManualSubmit}
-              disabled={isSubmittingManual || !manualEstimate || !isManualMinValid}
+              disabled={
+                isSubmittingManual || !manualEstimate || !isManualMinValid
+              }
               className={`w-full rounded-lg bg-gradient-to-r ${manualTheme.buttonGradient} py-2.5 text-sm font-semibold text-black ${
                 isSubmittingManual || !isManualMinValid
                   ? "opacity-70 cursor-not-allowed"
@@ -1543,9 +1754,92 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
             </button>
 
             <p className="mt-2 text-[10px] text-gray-400 text-center">
-              We’ll verify your transaction on-chain and contact you at the
-              email you provided. OMIX will be sent manually after confirmation.
+              We’ll verify your transaction and update your status. OMIX will be
+              sent after confirmation.
             </p>
+          </motion.div>
+        </div>
+      )}
+
+      {/* On-chain Transfer Success Popup */}
+      {buySuccessOpen && buySuccessData && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9, y: 10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#050712] via-lime-900/30 to-black/80 border border-lime-400/50 shadow-2xl p-5 text-white"
+          >
+            <button
+              onClick={() => setBuySuccessOpen(false)}
+              className="absolute right-3 top-3 text-gray-400 hover:text-white text-xl"
+            >
+              ×
+            </button>
+
+            <div className="flex items-center gap-3 mb-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lime-400 text-black text-xl">
+                ✅
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-lime-300">
+                  Transfer Sent
+                </h3>
+                <p className="text-sm text-gray-100">
+                  Your payment was sent. Allocation will show as pending until verified.
+                </p>
+              </div>
+            </div>
+
+            <div className="mt-2 text-xs space-y-1.5 bg-black/40 border border-lime-400/30 rounded-lg p-3">
+              <p>
+                <span className="text-gray-400">Paid:</span>{" "}
+                <span className="font-semibold">
+                  {buySuccessData.amountPaid} {buySuccessData.currency}
+                </span>
+              </p>
+              <p>
+                <span className="text-gray-400">Estimated value:</span>{" "}
+                <span className="font-semibold">
+                  ~${buySuccessData.usdCost.toFixed(2)}
+                </span>
+              </p>
+              <p>
+                <span className="text-gray-400">OMIX allocated:</span>{" "}
+                <span className="font-semibold">
+                  {buySuccessData.tokens.toFixed(2)} OMIX
+                </span>
+              </p>
+
+              {txUrl && (
+                <a
+                  href={txUrl}
+                  className="inline-flex text-cyan-300 hover:text-cyan-200"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View transaction
+                </a>
+              )}
+            </div>
+
+            <div className="mt-4 grid grid-cols-2 gap-2">
+              <a
+                href="https://dapp.weewux.com/dashboard"
+                className="w-full text-center rounded-lg bg-white/10 border border-white/10 py-2 text-sm font-semibold hover:bg-white/15"
+                target="_blank"
+                rel="noreferrer"
+              >
+                View Dashboard
+              </a>
+              <a
+                href="https://dapp.weewux.com/dashboard/staking"
+                className="w-full text-center rounded-lg bg-gradient-to-r from-lime-400 to-lime-500 py-2 text-sm font-semibold text-black hover:from-lime-500 hover:to-lime-400"
+                target="_blank"
+                rel="noreferrer"
+              >
+                Stake OMIX
+              </a>
+            </div>
           </motion.div>
         </div>
       )}
@@ -1558,7 +1852,6 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="relative w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#050712] via-emerald-900/40 to-black/80 border border-emerald-400/60 shadow-2xl p-5 text-white"
           >
-            {/* Close button */}
             <button
               onClick={() => setManualSuccessOpen(false)}
               className="absolute right-3 top-3 text-gray-400 hover:text-white text-xl"
@@ -1572,11 +1865,10 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
               </div>
               <div>
                 <h3 className="text-lg font-semibold text-emerald-300">
-                  Payment Submitted!
+                  Submitted!
                 </h3>
                 <p className="text-sm text-gray-100">
-                  Our team will verify your transaction and email you shortly.
-                  Your OMIX tokens will be sent after confirmation.
+                  We’ll verify your payment and update your status.
                 </p>
               </div>
             </div>
@@ -1595,37 +1887,36 @@ if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
                 </span>
               </p>
               <p>
-                <span className="text-gray-400">OMIX you’ll receive:</span>{" "}
+                <span className="text-gray-400">OMIX allocated:</span>{" "}
                 <span className="font-semibold">
                   {manualSuccessData.tokens.toFixed(2)} OMIX
                 </span>
               </p>
               <p>
-                <span className="text-gray-400">Confirmation email:</span>{" "}
+                <span className="text-gray-400">Email:</span>{" "}
                 <span className="font-semibold break-all">
                   {manualSuccessData.email}
                 </span>
               </p>
               <p>
-  <span className="text-gray-400">Receive address:</span>{" "}
-  <span className="font-semibold break-all">
-    {manualSuccessData.receiveAddress}
-  </span>
-</p>
+                <span className="text-gray-400">Receive address:</span>{" "}
+                <span className="font-semibold break-all">
+                  {manualSuccessData.receiveAddress}
+                </span>
+              </p>
 
               {referralUsed && (
                 <p className="text-[11px] text-emerald-300">
                   ✅ Referral bonus applied – this OMIX amount already includes
-                  your extra tokens.
+                  extra tokens.
                 </p>
               )}
-                {promoActive && (
-  <p className="text-[11px] text-emerald-300">
-    ✅ Promo applied – this OMIX amount already includes your +{promoDiscountPct}%.
-  </p>
-)}
-
-
+              {promoActive && (
+                <p className="text-[11px] text-emerald-300">
+                  ✅ Promo applied – this OMIX amount already includes your +
+                  {promoDiscountPct}%.
+                </p>
+              )}
             </div>
 
             <button

@@ -53,7 +53,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Weewux Presale",
-  description: "Participate in the CTN presale",
+  description: "OMIX Dashboard — Buy, Stake & Manage Tokens",
 };
 
 export default function RootLayout({
