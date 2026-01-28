@@ -74,16 +74,16 @@ export default function LevelProgressStrip({
       {/* Top line (single-row on desktop, stacks on mobile) */}
       <div className="flex flex-col gap-1.5 sm:flex-row sm:items-center sm:justify-between">
         <div className="flex items-center gap-2 min-w-0">
-          <span className="text-[14px]" title={current.label}>
+          <span className="text-lg" title={current.label}>
             {current.icon}
           </span>
 
-          <p className="text-[12px] text-gray-200 font-medium truncate">
+          <p className="text-sm text-gray-200 font-medium truncate">
             {leftTitle}
           </p>
         </div>
 
-        <p className="text-[11px] text-gray-400 sm:text-right">
+        <p className="text-sm text-gray-400 sm:text-right">
           {currentIdx === nextIdx ? (
             <span className="text-gray-300">{rightTitle}</span>
           ) : (
@@ -100,20 +100,13 @@ export default function LevelProgressStrip({
       <div className="mt-2">
         <div className="h-1.5 rounded-full bg-black/40 border border-white/10 overflow-hidden">
           <div
-            className="h-full rounded-full bg-lime-400/70"
+            className="h-full rounded-full bg-gradient-to-r from-pink-500 to-cyan-400"
             style={{ width: `${Math.round(progress01 * 100)}%` }}
           />
         </div>
 
         {/* End labels (subtle) */}
-        <div className="mt-1 flex justify-between text-[10px] text-gray-500">
-          <span className="flex items-center gap-1">
-            <span className="opacity-80">{current.icon}</span> {current.label}
-          </span>
-          <span className="flex items-center gap-1">
-            {next.label} <span className="opacity-80">{next.icon}</span>
-          </span>
-        </div>
+        
       </div>
     </div>
   );

@@ -639,7 +639,7 @@ useEffect(() => {
       setReferralCode(ref);
       setReferralUsed(true);
       setReferralBonus(0.3);
-      toast.success("🎁 Referral link detected! You’ll get +30% OMIX.");
+      toast.success("🎁 Referral link detected! You’ll get +30% BLV.");
     }
   }, []);
 
@@ -748,7 +748,7 @@ const needed = parseUnits(amount || "0", decimals);
       return;
     }
 
-    // Require receive address (EVM) because OMIX is EVM token
+    // Require receive address (EVM) because BLV is EVM token
     const receiveAddr = (manualReceiveAddress || address || "").trim();
     if (!/^0x[a-fA-F0-9]{40}$/.test(receiveAddr)) {
       setManualReceiveAddressError(
@@ -811,7 +811,7 @@ if (!res.ok || !data?.ok) throw new Error("Request failed");
 
 
       toast.success(
-        `Manual payment submitted: ~${estimate.tokens.toFixed(2)} OMIX for ${Number(manualAmount)} ${manualPaymentMethod}.`
+        `Manual payment submitted: ~${estimate.tokens.toFixed(2)} BLV for ${Number(manualAmount)} ${manualPaymentMethod}.`
       );
 
       setManualSuccessData({
@@ -991,7 +991,7 @@ try {
       toast.error("Connect wallet to generate referral link!");
       return;
     }
-    const code = `https://weewux.com/?ref=${address}`;
+    const code = `https://belvarium.com/?ref=${address}`;
     setGeneratedReferral(code);
     toast.success("Referral link generated!");
   };
@@ -1032,7 +1032,7 @@ try {
     setReferralCode(addr);
     setReferralPopupOpen(true);
 
-    toast.success("Referral applied! You’ll get +30% more OMIX (displayed).");
+    toast.success("Referral applied! You’ll get +30% more BLV (displayed).");
   };
 
   // -----------------------
@@ -1075,20 +1075,20 @@ const disabledReason = !amount
         {/* LEFT: BUY CONSOLE */}
         <div id="buy" className="neon-card neon-card--soft p-4 md:p-5">
           <div className="pointer-events-none -mx-4 -mt-4 mb-2">
-            <div className="h-[2px] bg-[linear-gradient(90deg,transparent,rgba(163,230,53,0.75),transparent)] opacity-70" />
-            <div className="h-[10px] bg-[radial-gradient(circle_at_center,rgba(163,230,53,0.18),transparent_70%)] blur-[2px]" />
+            <div className="h-[2px] bg-[linear-gradient(90deg,transparent,rgba(255,0,102,0.75),transparent)] opacity-70" />
+            <div className="h-[10px] bg-[radial-gradient(circle_at_center,rgba(255,0,102,0.18),transparent_70%)] blur-[2px]" />
           </div>
 
           <div className="flex items-center justify-between mb-3">
             <div className="mb-2">
-              <h2 className="text-lg font-semibold">Buy OMIX</h2>
+              <h2 className="text-lg font-semibold">Buy BLV</h2>
              
             </div>
           </div>
 
           {/* Chain warning */}
           {isConnected && !isSupportedChain && (
-            <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-[11px] text-red-200">
+            <div className="mb-3 rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-200">
               Unsupported chain. Please switch to <b>Ethereum</b>, <b>Base</b> or{" "}
               <b>BSC</b>.
             </div>
@@ -1114,9 +1114,9 @@ const disabledReason = !amount
               <button
                 key={symbol}
                 onClick={() => setCurrency(symbol as any)}
-                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-xs font-medium border transition-all ${
+                className={`flex items-center gap-1 px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
                   currency === symbol
-                    ? "bg-lime-400/10 border-lime-400 text-lime-200"
+                    ? "bg-pink-500/10 border-pink-500 text-pink-200"
                     : "bg-gray-900/70 border-gray-700 text-gray-200 hover:bg-gray-800"
                 }`}
               >
@@ -1132,20 +1132,20 @@ const disabledReason = !amount
                 flex items-center gap-2
                 px-3 py-1.5
                 rounded-lg
-                text-xs font-medium
+                text-sm font-medium
                 border transition-all
                 bg-gray-900/70 border-gray-700 text-gray-200
                 hover:bg-gray-800/70 hover:border-gray-600
-                focus:outline-none focus:ring-2 focus:ring-lime-400/30
-                shadow-[0_0_0_1px_rgba(163,230,53,0.10)]
+                focus:outline-none focus:ring-2 focus:ring-pink-400/30
+                shadow-[0_0_0_1px_rgba(255,0,102,0.10)]
               `}
             >
-              <span className="inline-flex h-4 w-4 items-center justify-center rounded-md bg-lime-400/10 border border-lime-400/20 text-lime-300">
-                <SiBitcoin className="text-[12px]" />
+              <span className="inline-flex h-4 w-4 items-center justify-center rounded-md bg-lime-400/10 border border-lime-400/20 text-pink-300">
+                <SiBitcoin className="text-sm" />
               </span>
                 Other payment methods
 
-              <span className="hidden sm:inline text-[10px] text-gray-400">
+              <span className="hidden sm:inline text-sm text-gray-400">
                 (BTC • SOL • XRP • Card)
               </span>
             </button>
@@ -1157,7 +1157,7 @@ const disabledReason = !amount
           {/* Inputs */}
           <div className="mt-4 space-y-3">
             <div className="relative">
-              <label className="block text-xs mb-1 text-gray-400">
+              <label className="block text-sm mb-1 text-gray-400">
                 Amount you pay ({currency})
               </label>
               <input
@@ -1166,14 +1166,14 @@ const disabledReason = !amount
                 step="any"
                 value={amount}
                 onChange={(e) => handleAmountChange(e.target.value)}
-                className="w-full rounded-lg bg-gray-950/80 border border-gray-700 px-3 py-2.5 text-sm text-white focus:ring-2 focus:ring-lime-400 outline-none"
+                className="w-full rounded-lg bg-gray-950/80 border border-gray-700 px-3 py-2.5 text-sm text-white focus:ring-2 focus:ring-pink-400 outline-none"
                 placeholder="0.0"
               />
-              <span className="absolute right-3 top-8 text-[11px] text-gray-500">
+              <span className="absolute right-3 top-8 text-sm text-gray-500">
                 {currency}
               </span>
               {usdValue > 0 && (
-                <p className="mt-1 text-[11px] text-gray-400">
+                <p className="mt-1 text-sm text-gray-400">
                   ≈{" "}
                   <span className="text-gray-200 tabular-nums">
                     ${usdValue.toFixed(2)} USD
@@ -1181,15 +1181,15 @@ const disabledReason = !amount
                 </p>
               )}
               {amount && !isMinAmountValid && (
-                <p className="text-yellow-400 text-[11px] mt-1">
+                <p className="text-yellow-400 text-sm mt-1">
                   Minimum purchase $250
                 </p>
               )}
             </div>
 
             <div>
-              <label className="block text-xs mb-1 text-gray-400">
-                OMIX you receive
+              <label className="block text-sm mb-1 text-gray-400">
+                BLV you receive
               </label>
               <div className="flex items-center gap-2">
                 <input
@@ -1201,14 +1201,14 @@ const disabledReason = !amount
               </div>
 
               {referralUsed && (
-                <p className="text-[11px] text-green-400 mt-1">
-                  🎉 Referral bonus active: +30% OMIX displayed here.
+                <p className="text-sm text-green-400 mt-1">
+                  🎉 Referral bonus active: +30% BLV displayed here.
                 </p>
               )}
 
               {promoActive && (
-                <p className="text-[11px] text-emerald-300">
-                  ✅ Promo applied – this OMIX amount already includes your +
+                <p className="text-sm text-emerald-300">
+                  ✅ Promo applied – this BLV amount already includes your +
                   {promoDiscountPct}%.
                 </p>
               )}
@@ -1225,7 +1225,7 @@ const disabledReason = !amount
                 {({ openConnectModal }) => (
                   <button
                     onClick={openConnectModal}
-                    className="w-full bg-lime-400 hover:bg-lime-300 text-black font-semibold py-2.5 rounded-lg text-sm transition-colors"
+                    className="w-full bg-pink-500 hover:bg-pink-400 text-white font-semibold py-2.5 rounded-lg text-sm transition-colors"
                   >
                     Connect Wallet
                   </button>
@@ -1239,8 +1239,8 @@ const disabledReason = !amount
                   isPending
                     ? "bg-gray-600 cursor-wait text-gray-200"
                     : canSubmit
-                    ? "bg-lime-400 hover:bg-lime-300 text-black"
-                    : "bg-lime-400/40 text-black/60 cursor-not-allowed"
+                    ? "bg-pink-500 hover:bg-pink-400 text-white"
+                    : "bg-pink-500/40 text-black/60 cursor-not-allowed"
                 }`}
               >
                                 {isPending ? "Processing..." : `Buy with ${currency}`}
@@ -1249,25 +1249,25 @@ const disabledReason = !amount
             )}
 
             {isConnected && insufficientBalance && (
-              <p className="text-[11px] text-red-400 mt-1 animate-pulse text-center">
+              <p className="text-sm text-red-400 mt-1 animate-pulse text-center">
                 {buyBalanceError || "Insufficient balance."}
               </p>
             )}
 
             {isConnected && buyTried && buyErrorText && (
-              <p className="mt-2 text-[11px] text-red-400 text-center animate-pulse">
+              <p className="mt-2 text-sm text-red-400 text-center animate-pulse">
                 {buyErrorText}
               </p>
             )}
 
             {lastTxHash && (
-              <div className="mt-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-[11px] text-gray-300">
+              <div className="mt-2 rounded-md border border-white/10 bg-white/5 px-3 py-2 text-sm text-gray-300">
                 <div className="flex items-center justify-between">
                   <span>{lastTxLabel || "Transaction"}</span>
                   <span
                     className={
                       txReceipt.isSuccess
-                        ? "text-lime-300"
+                        ? "text-pink-300"
                         : txReceipt.isError
                         ? "text-red-300"
                         : "text-amber-300"
@@ -1295,18 +1295,18 @@ const disabledReason = !amount
 
             
 
-            <div className="flex justify-between text-[11px] text-gray-400 mt-2">
+            <div className="flex justify-between text-sm text-gray-400 mt-2">
               <a
-                href="https://weewux.com/how-to-buy-omix/"
-                className="hover:text-lime-300"
+                href="https://belvarium.com/how-to-buy-blv/"
+                className="hover:text-pink-300"
                 target="_blank"
                 rel="noreferrer"
               >
                 How to Buy
               </a>
               <a
-                href="https://weewux.com/earn-more-with-omix-referral/"
-                className="hover:text-lime-300"
+                href="https://belvarium.com/earn-more-with-blv-referral/"
+                className="hover:text-pink-300"
                 target="_blank"
                 rel="noreferrer"
               >
@@ -1322,20 +1322,20 @@ const disabledReason = !amount
           <div className="neon-card neon-card--hero p-4 md:p-5">
             <div className="flex items-center justify-between mb-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.2em] text-gray-500">
+                <p className="text-sm uppercase tracking-[0.2em] text-gray-500">
                   Presale status
                 </p>
                 <p className="text-sm text-gray-300">
                   Live price evolution every 24 hours
                 </p>
               </div>
-              <span className="px-2 py-1 rounded-full text-[11px] bg-lime-400/10 text-lime-300 border border-lime-400/40">
+              <span className="px-2 py-1 rounded-full text-sm bg-lime-400/10 text-pink-300 border border-lime-400/40">
                 Live
               </span>
             </div>
 
             {/* Countdown */}
-            <div className="grid grid-cols-4 gap-2 text-center mb-3">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-center mb-3">
               {["Days", "Hours", "Minutes", "Seconds"].map((label, i) => {
                 const value = Object.values(timeLeft)[i];
                 return (
@@ -1344,26 +1344,26 @@ const disabledReason = !amount
                     className="rounded-lg bg-gray-950/80 border border-gray-800 py-1.5"
                   >
                     <div className="text-sm font-semibold">{value}</div>
-                    <div className="text-[10px] text-gray-500">{label}</div>
+                    <div className="text-sm text-gray-500">{label}</div>
                   </div>
                 );
               })}
             </div>
 
             {/* Price Info */}
-            <div className="flex items-center justify-between text-xs mb-3">
+            <div className="flex items-center justify-between text-sm mb-3">
               <div>
                 <p className="text-gray-400">Current price</p>
-                <p className="text-sm font-semibold text-lime-300">
-                  ${currentPrice.toFixed(4)} / OMIX
+                <p className="text-sm font-semibold text-pink-300">
+                  ${currentPrice.toFixed(4)} / BLV
                 </p>
               </div>
               <div className="text-right">
                 <p className="text-gray-400">Next price</p>
-                <p className="text-sm font-semibold text-lime-400">
-                  ${nextPrice.toFixed(4)} / OMIX
+                <p className="text-sm font-semibold text-pink-400">
+                  ${nextPrice.toFixed(4)} / BLV
                 </p>
-                <p className="text-[10px] text-gray-500">
+                <p className="text-sm text-gray-500">
                   Auto-increase every 24h
                 </p>
               </div>
@@ -1371,7 +1371,7 @@ const disabledReason = !amount
 
             {/* Progress */}
             <div className="mt-1">
-              <div className="flex justify-between text-[11px] text-gray-400 mb-1">
+              <div className="flex justify-between text-sm text-gray-400 mb-1">
                 <span>Presale progress</span>
                 <span className="text-cyan-300 font-semibold">
                   {progressPercent}% sold
@@ -1382,7 +1382,7 @@ const disabledReason = !amount
                   initial={{ width: "0%" }}
                   animate={{ width: `${progressPercent}%` }}
                   transition={{ duration: 1.8, ease: "easeInOut" }}
-                  className="h-2.5 rounded-full bg-gradient-to-r from-lime-400 via-cyan-400 to-purple-500"
+                  className="h-2.5 rounded-full bg-gradient-to-r from-pink-500 via-cyan-400 to-purple-500"
                 />
               </div>
             </div>
@@ -1393,18 +1393,18 @@ const disabledReason = !amount
             <div className="flex items-center justify-between">
               <div>
                 <h3 className="text-sm font-semibold">Referral Center</h3>
-                <p className="text-[11px] text-gray-400">
+                <p className="text-sm text-gray-400">
                   Apply a referral or generate your own link after purchase.
                 </p>
               </div>
-              <span className="hidden sm:inline-flex items-center rounded-full border border-purple-400/40 bg-purple-500/10 px-2 py-0.5 text-[10px] text-purple-200">
-                +30% OMIX bonus
+              <span className="hidden sm:inline-flex items-center rounded-full border border-purple-400/40 bg-purple-500/10 px-2 py-0.5 text-sm text-purple-200">
+                +30% BLV bonus
               </span>
             </div>
 
             {/* Apply a referral */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-lime-300">
+              <label className="block text-sm font-semibold text-pink-300">
                 Have a referral?
               </label>
               <div className="flex gap-2">
@@ -1413,11 +1413,11 @@ const disabledReason = !amount
                   value={referralCode}
                   onChange={(e) => setReferralCode(e.target.value)}
                   placeholder="Paste referral link or wallet address"
-                  className="flex-1 rounded-md bg-gray-950/80 border border-gray-700 px-3 py-2 text-xs md:text-sm text-white focus:ring-2 focus:ring-lime-400 outline-none"
+                  className="flex-1 rounded-md bg-gray-950/80 border border-gray-700 px-3 py-2 text-sm md:text-base text-white focus:ring-2 focus:ring-pink-400 outline-none"
                 />
                 <button
                   onClick={handleSubmitReferral}
-                  className="w-full sm:w-auto px-3 md:px-4 py-2 rounded-md bg-lime-400 hover:bg-lime-300 text-black font-semibold text-xs md:text-sm"
+                  className="w-full sm:w-auto px-3 md:px-4 py-2 rounded-md bg-pink-500 hover:bg-pink-400 text-white font-semibold text-sm md:text-base"
                 >
                   Submit
                 </button>
@@ -1426,7 +1426,7 @@ const disabledReason = !amount
 
             {/* Generated referral link */}
             <div className="space-y-1.5">
-              <label className="block text-xs font-semibold text-gray-300">
+              <label className="block text-sm font-semibold text-gray-300">
                 Your referral link
               </label>
               <div className="flex flex-col sm:flex-row gap-2">
@@ -1439,7 +1439,7 @@ const disabledReason = !amount
                       ? "Generate your referral link"
                       : "Make a purchase to unlock your referral link"
                   }
-                  className="flex-1 rounded-md bg-gray-950/80 border border-gray-700 px-3 py-2 text-xs md:text-sm text-white"
+                  className="flex-1 rounded-md bg-gray-950/80 border border-gray-700 px-3 py-2 text-sm md:text-base text-white"
                 />
                 <button
                   onClick={() => {
@@ -1450,14 +1450,14 @@ const disabledReason = !amount
                     }
                     generatedReferral ? handleCopyReferral() : handleGenerateReferral();
                   }}
-                  className="w-full sm:w-auto px-3 md:px-4 py-2 rounded-md bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-xs md:text-sm"
+                  className="w-full sm:w-auto px-3 md:px-4 py-2 rounded-md bg-cyan-400 hover:bg-cyan-300 text-black font-semibold text-sm md:text-base"
                 >
                   {generatedReferral ? "Copy" : "Generate"}
                 </button>
               </div>
               {showReferralNotice && (
-                <p className="mt-1 text-[11px] text-yellow-400">
-                  ⚠️ You need to purchase OMIX before generating a referral link.
+                <p className="mt-1 text-sm text-yellow-400">
+                  ⚠️ You need to purchase BLV before generating a referral link.
                 </p>
               )}
             </div>
@@ -1471,19 +1471,19 @@ const disabledReason = !amount
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="relative w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#050712] via-purple-900/40 to-black/80 border border-lime-400/50 shadow-2xl p-4 text-white"
+            className="relative w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#050712] via-purple-900/40 to-black/80 border border-pink-500/50 shadow-2xl p-4 text-white"
           >
             <div className="flex items-center gap-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lime-400 text-black text-xl">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500 text-white text-xl">
                 🎉
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-lime-300">
+                <h3 className="text-lg font-semibold text-pink-300">
                   Referral Applied!
                 </h3>
                 <p className="text-sm text-gray-100">
                   You’ve unlocked{" "}
-                  <span className="font-bold">+30% more OMIX</span> on this
+                  <span className="font-bold">+30% more BLV</span> on this
                   purchase.
                 </p>
               </div>
@@ -1491,7 +1491,7 @@ const disabledReason = !amount
 
             <button
               onClick={() => setReferralPopupOpen(false)}
-              className="mt-4 w-full rounded-lg bg-gradient-to-r from-lime-400 to-lime-500 py-2 text-sm font-semibold text-black hover:from-lime-500 hover:to-lime-400"
+              className="mt-4 w-full rounded-lg bg-gradient-to-r from-pink-500 to-pink-600 py-2 text-sm font-semibold text-black hover:from-pink-600 hover:to-pink-500"
             >
               Awesome, got it!
             </button>
@@ -1517,12 +1517,12 @@ const disabledReason = !amount
             <h3 className={`text-lg font-semibold mb-1 ${manualTheme.accentText}`}>
               Pay with {manualPaymentMethod}
             </h3>
-            <p className="text-xs text-gray-300 mb-4">
+            <p className="text-sm text-gray-300 mb-4">
               Manual {manualPaymentMethod} payment from any wallet or exchange.
             </p>
 
             {/* Method selector */}
-            <div className="grid grid-cols-3 gap-2 mb-2">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-2">
               {(["BTC", "USDT", "ETH"] as const).map((m) => {
                 const isActive = manualPaymentMethod === m;
                 const icon =
@@ -1538,7 +1538,7 @@ const disabledReason = !amount
                   <button
                     key={m}
                     onClick={() => setManualPaymentMethod(m)}
-                    className={`px-2 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold border flex items-center justify-center gap-1 min-w-0 ${
+                    className={`px-2 py-1.5 rounded-lg text-sm sm:text-base font-semibold border flex items-center justify-center gap-1 min-w-0 ${
                       isActive
                         ? METHOD_PILL_ACTIVE[m]
                         : "bg-gray-900/70 border-gray-700 text-gray-200 hover:bg-gray-800/70"
@@ -1551,7 +1551,7 @@ const disabledReason = !amount
               })}
             </div>
 
-            <div className="grid grid-cols-3 gap-2 mb-3">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3">
               {(["SOL", "XRP", "CARD"] as const).map((m) => {
                 const isActive = manualPaymentMethod === m;
                 const icon =
@@ -1566,7 +1566,7 @@ const disabledReason = !amount
                 const handleClick = () => {
                   if (m === "CARD") {
                     window.open(
-                      "https://weewux.com/buy-omix-tokens-using-a-credit-or-debit-card/",
+                      "https://belvarium.com/buy-blv-tokens-using-a-credit-or-debit-card/",
                       "_blank"
                     );
                     return;
@@ -1578,7 +1578,7 @@ const disabledReason = !amount
                   <button
                     key={m}
                     onClick={handleClick}
-                    className={`px-2 py-1.5 rounded-lg text-[11px] sm:text-xs font-semibold border flex items-center justify-center gap-1 min-w-0 ${
+                    className={`px-2 py-1.5 rounded-lg text-sm sm:text-base font-semibold border flex items-center justify-center gap-1 min-w-0 ${
                       isActive
                         ? METHOD_PILL_ACTIVE[m]
                         : "bg-gray-900/70 border-gray-700 text-gray-200 hover:bg-gray-800/70"
@@ -1596,12 +1596,12 @@ const disabledReason = !amount
               <div className="bg-white p-2 rounded-lg">
                 <QRCode value={getManualQrValue() || " "} size={110} />
               </div>
-              <p className="text-[10px] text-gray-300">
+              <p className="text-sm text-gray-300">
                 Scan this QR code in your {manualPaymentMethod} wallet.
               </p>
 
               <div className="w-full mt-2">
-                <label className="block text-xs text-gray-300 mb-1">
+                <label className="block text-sm text-gray-300 mb-1">
                   {manualPaymentMethod} address
                 </label>
                 <div className="flex flex-col sm:flex-row gap-2">
@@ -1609,11 +1609,11 @@ const disabledReason = !amount
                     type="text"
                     readOnly
                     value={manualAddress}
-                    className="flex-1 min-w-0 rounded-md bg-gray-900/80 border border-gray-700 px-3 py-2 text-xs text-gray-100 truncate"
+                    className="flex-1 min-w-0 rounded-md bg-gray-900/80 border border-gray-700 px-3 py-2 text-sm text-gray-100 truncate"
                   />
                   <button
                     onClick={handleCopyManualAddress}
-                    className="shrink-0 whitespace-nowrap px-3 py-2 rounded-md bg-white/90 text-black text-xs font-semibold hover:bg-white"
+                    className="shrink-0 whitespace-nowrap px-3 py-2 rounded-md bg-white/90 text-black text-sm font-semibold hover:bg-white"
                   >
                     Copy
                   </button>
@@ -1621,7 +1621,7 @@ const disabledReason = !amount
               </div>
 
               {(manualPaymentMethod === "ETH" || manualPaymentMethod === "USDT") && !isSupportedChain && (
-                <p className="mt-2 text-[11px] text-red-300 text-center">
+                <p className="mt-2 text-sm text-red-300 text-center">
                   Switch to Ethereum/Base/BSC to get the correct treasury address.
                 </p>
               )}
@@ -1630,7 +1630,7 @@ const disabledReason = !amount
             {/* Form fields */}
             <div className="space-y-1.5 mb-2">
               <div>
-                <label className="block text-xs text-gray-300 mb-1">
+                <label className="block text-sm text-gray-300 mb-1">
                   Amount you pay ({manualPaymentMethod})
                 </label>
                 <input
@@ -1656,19 +1656,19 @@ const disabledReason = !amount
                 />
 
                 {manualEstimate && (
-                  <div className="mt-1 text-[11px] text-gray-300 space-y-0.5">
+                  <div className="mt-1 text-sm text-gray-300 space-y-0.5">
                     <p>
                       Tokens you receive:{" "}
                       <span className="font-semibold tabular-nums">
-                        {manualEstimate.tokens.toFixed(2)} OMIX
+                        {manualEstimate.tokens.toFixed(2)} BLV
                       </span>
                       {referralUsed && (
-                        <span className="text-[10px] text-lime-300 ml-1">
+                        <span className="text-sm text-pink-300 ml-1">
                           (includes referral bonus)
                         </span>
                       )}
                       {promoActive && (
-                        <span className="text-[10px] text-amber-200 ml-1">
+                        <span className="text-sm text-amber-200 ml-1">
                           (+{promoDiscountPct}% promo)
                         </span>
                       )}
@@ -1680,7 +1680,7 @@ const disabledReason = !amount
                       </span>
                     </p>
                     {!isManualMinValid && (
-                      <p className="text-[11px] text-yellow-400 mt-1">
+                      <p className="text-sm text-yellow-400 mt-1">
                         Minimum purchase $250
                       </p>
                     )}
@@ -1689,7 +1689,7 @@ const disabledReason = !amount
               </div>
 
               <div>
-                <label className="block text-xs text-gray-300 mb-1">
+                <label className="block text-sm text-gray-300 mb-1">
                   Your email
                 </label>
 
@@ -1707,14 +1707,14 @@ const disabledReason = !amount
                 />
 
                 {manualEmailError && (
-                  <p className="text-[11px] text-red-400 mt-1 animate-pulse">
+                  <p className="text-sm text-red-400 mt-1 animate-pulse">
                     {manualEmailError}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-xs text-gray-300 mb-1">
+                <label className="block text-sm text-gray-300 mb-1">
                   ERC20 receive address
                 </label>
                 <input
@@ -1725,14 +1725,14 @@ const disabledReason = !amount
                     if (manualReceiveAddressError)
                       setManualReceiveAddressError("");
                   }}
-                  placeholder="Your OMIX tokens will be sent to this address (0x...)"
-                  className={`w-full rounded-md bg-gray-900/80 px-3 py-2 text-xs text-white focus:ring-2 ${manualTheme.ring} border ${
+                  placeholder="Your BLV tokens will be sent to this address (0x...)"
+                  className={`w-full rounded-md bg-gray-900/80 px-3 py-2 text-sm text-white focus:ring-2 ${manualTheme.ring} border ${
                     manualReceiveAddressError ? "border-red-500" : "border-gray-700"
                   }`}
                 />
 
                 {manualReceiveAddressError && (
-                  <p className="text-[11px] text-red-400 mt-1 animate-pulse">
+                  <p className="text-sm text-red-400 mt-1 animate-pulse">
                     {manualReceiveAddressError}
                   </p>
                 )}
@@ -1753,8 +1753,8 @@ const disabledReason = !amount
               {isSubmittingManual ? "Submitting..." : "I have sent the payment"}
             </button>
 
-            <p className="mt-2 text-[10px] text-gray-400 text-center">
-              We’ll verify your transaction and update your status. OMIX will be
+            <p className="mt-2 text-sm text-gray-400 text-center">
+              We’ll verify your transaction and update your status. BLV will be
               sent after confirmation.
             </p>
           </motion.div>
@@ -1767,7 +1767,7 @@ const disabledReason = !amount
           <motion.div
             initial={{ opacity: 0, scale: 0.9, y: 10 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
-            className="relative w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#050712] via-lime-900/30 to-black/80 border border-lime-400/50 shadow-2xl p-5 text-white"
+            className="relative w-full max-w-sm rounded-2xl bg-gradient-to-br from-[#050712] via-pink-900/30 to-black/80 border border-pink-500/50 shadow-2xl p-5 text-white"
           >
             <button
               onClick={() => setBuySuccessOpen(false)}
@@ -1777,11 +1777,11 @@ const disabledReason = !amount
             </button>
 
             <div className="flex items-center gap-3 mb-3">
-              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-lime-400 text-black text-xl">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full bg-pink-500 text-white text-xl">
                 ✅
               </div>
               <div>
-                <h3 className="text-lg font-semibold text-lime-300">
+                <h3 className="text-lg font-semibold text-pink-300">
                   Transfer Sent
                 </h3>
                 <p className="text-sm text-gray-100">
@@ -1790,7 +1790,7 @@ const disabledReason = !amount
               </div>
             </div>
 
-            <div className="mt-2 text-xs space-y-1.5 bg-black/40 border border-lime-400/30 rounded-lg p-3">
+            <div className="mt-2 text-sm space-y-1.5 bg-black/40 border border-pink-500/30 rounded-lg p-3">
               <p>
                 <span className="text-gray-400">Paid:</span>{" "}
                 <span className="font-semibold">
@@ -1804,9 +1804,9 @@ const disabledReason = !amount
                 </span>
               </p>
               <p>
-                <span className="text-gray-400">OMIX allocated:</span>{" "}
+                <span className="text-gray-400">BLV allocated:</span>{" "}
                 <span className="font-semibold">
-                  {buySuccessData.tokens.toFixed(2)} OMIX
+                  {buySuccessData.tokens.toFixed(2)} BLV
                 </span>
               </p>
 
@@ -1822,9 +1822,9 @@ const disabledReason = !amount
               )}
             </div>
 
-            <div className="mt-4 grid grid-cols-2 gap-2">
+            <div className="mt-4 grid grid-cols-1 sm:grid-cols-2 gap-2">
               <a
-                href="https://dapp.weewux.com/dashboard"
+                href="https://dapp.belvarium.com/dashboard"
                 className="w-full text-center rounded-lg bg-white/10 border border-white/10 py-2 text-sm font-semibold hover:bg-white/15"
                 target="_blank"
                 rel="noreferrer"
@@ -1832,12 +1832,12 @@ const disabledReason = !amount
                 View Dashboard
               </a>
               <a
-                href="https://dapp.weewux.com/dashboard/staking"
-                className="w-full text-center rounded-lg bg-gradient-to-r from-lime-400 to-lime-500 py-2 text-sm font-semibold text-black hover:from-lime-500 hover:to-lime-400"
+                href="https://dapp.belvarium.com/dashboard/staking"
+                className="w-full text-center rounded-lg bg-gradient-to-r from-pink-500 to-pink-600 py-2 text-sm font-semibold text-black hover:from-pink-600 hover:to-pink-500"
                 target="_blank"
                 rel="noreferrer"
               >
-                Stake OMIX
+                Stake BLV
               </a>
             </div>
           </motion.div>
@@ -1873,7 +1873,7 @@ const disabledReason = !amount
               </div>
             </div>
 
-            <div className="mt-2 text-xs space-y-1.5 bg-black/40 border border-emerald-400/40 rounded-lg p-3">
+            <div className="mt-2 text-sm space-y-1.5 bg-black/40 border border-emerald-400/40 rounded-lg p-3">
               <p>
                 <span className="text-gray-400">You pay:</span>{" "}
                 <span className="font-semibold">
@@ -1887,9 +1887,9 @@ const disabledReason = !amount
                 </span>
               </p>
               <p>
-                <span className="text-gray-400">OMIX allocated:</span>{" "}
+                <span className="text-gray-400">BLV allocated:</span>{" "}
                 <span className="font-semibold">
-                  {manualSuccessData.tokens.toFixed(2)} OMIX
+                  {manualSuccessData.tokens.toFixed(2)} BLV
                 </span>
               </p>
               <p>
@@ -1906,14 +1906,14 @@ const disabledReason = !amount
               </p>
 
               {referralUsed && (
-                <p className="text-[11px] text-emerald-300">
-                  ✅ Referral bonus applied – this OMIX amount already includes
+                <p className="text-sm text-emerald-300">
+                  ✅ Referral bonus applied – this BLV amount already includes
                   extra tokens.
                 </p>
               )}
               {promoActive && (
-                <p className="text-[11px] text-emerald-300">
-                  ✅ Promo applied – this OMIX amount already includes your +
+                <p className="text-sm text-emerald-300">
+                  ✅ Promo applied – this BLV amount already includes your +
                   {promoDiscountPct}%.
                 </p>
               )}

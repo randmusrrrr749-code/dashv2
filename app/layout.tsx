@@ -52,8 +52,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Weewux Presale",
-  description: "OMIX Dashboard — Buy, Stake & Manage Tokens",
+  title: "Belvarium Presale",
+  description: "BLV Dashboard — Buy, Stake & Manage Tokens",
 };
 
 export default function RootLayout({

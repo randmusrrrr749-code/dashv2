@@ -10,7 +10,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 const queryClient = new QueryClient();
 
 const config = getDefaultConfig({
-  appName: "OMIX presale",
+  appName: "Belvarium presale",
   projectId: "b317015e5e20.......bc3052ee5967a9",
   chains: [mainnet, base, bsc],
   ssr: true,

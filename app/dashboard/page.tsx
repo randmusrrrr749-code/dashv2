@@ -70,31 +70,31 @@ export default function DashboardOverviewPage() {
   // Wallet
   const { address, isConnected } = useAccount();
 
-  const { purchasedOmix } = useOffchainDashboard(address, isConnected);
+  const { purchasedBlv } = useOffchainDashboard(address, isConnected);
 
   // Rank / tier (based on spend)
-  const ASSUMED_OMIX_PRICE = 0.0175;
+  const ASSUMED_BLV_PRICE = 0.0175;
   const AVG_BUY_USD = 2000;
 
   const userUsdSpent = useMemo(
-    () => purchasedOmix * ASSUMED_OMIX_PRICE,
-    [purchasedOmix]
+    () => purchasedBlv * ASSUMED_BLV_PRICE,
+    [purchasedBlv]
   );
 
   const userTier = useMemo(() => {
-    if (!isConnected || !address || purchasedOmix <= 0) return null;
+    if (!isConnected || !address || purchasedBlv <= 0) return null;
     return getBuyerTierIcon(userUsdSpent);
-  }, [isConnected, address, purchasedOmix, userUsdSpent]);
+  }, [isConnected, address, purchasedBlv, userUsdSpent]);
 
   const estimatedRank = useMemo(() => {
-    if (!isConnected || !address || purchasedOmix <= 0) return null;
+    if (!isConnected || !address || purchasedBlv <= 0) return null;
 
     const relative = userUsdSpent / AVG_BUY_USD;
     const percentile = 1 / (1 + Math.max(0.0001, relative));
     const rank = Math.round(totalBuyers * percentile);
 
     return Math.min(totalBuyers, Math.max(1, rank));
-  }, [isConnected, address, purchasedOmix, userUsdSpent, totalBuyers]);
+  }, [isConnected, address, purchasedBlv, userUsdSpent, totalBuyers]);
 
   return (
     <DashboardLayout>
@@ -145,25 +145,21 @@ export default function DashboardOverviewPage() {
       </section>
 
       {/* ROW 2 */}
-      <section className="grid gap-6 lg:grid-cols-2">
-        {/* Left: leaderboard */}
-        <LeaderboardCard
-          variant="compact"
-          topN={5}
-          todaysTopBuyers={sim.todaysTopBuyers}
-        />
+<section className="grid gap-6 lg:grid-cols-2 items-start">
+  <div className="min-w-0">
+    <LeaderboardCard
+      variant="compact"
+      topN={5}
+      todaysTopBuyers={sim.todaysTopBuyers}
+    />
+  </div>
 
-        {/* Right: activity + referral */}
-        <div className="grid gap-6">
-          <LatestTransactionsCard txs={sim.latestTxs} />
+  <div className="min-w-0 grid gap-6">
+    <LatestTransactionsCard txs={sim.latestTxs} />
+    <ReferralCard purchasedBlv={purchasedBlv} isConnected={isConnected} address={address} />
+  </div>
+</section>
 
-          <ReferralCard
-            purchasedOmix={purchasedOmix}
-            isConnected={isConnected}
-            address={address}
-          />
-        </div>
-      </section>
     </DashboardLayout>
   );
 }

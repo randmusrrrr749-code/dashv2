@@ -29,13 +29,13 @@ export default function WalletAccountCard() {
 
   return (
     <div className="rounded-2xl border border-white/10 bg-black/40 p-4">
-      <p className="text-xs uppercase tracking-[0.2em] text-gray-400 mb-3">
+      <p className="text-sm uppercase tracking-[0.2em] text-gray-400 mb-3">
         Wallet & Account
       </p>
 
       {!isConnected ? (
         <div className="space-y-3">
-          <p className="text-sm text-gray-300">
+          <p className="text-base text-gray-300">
             Connect your wallet to access presale, staking, and referrals.
           </p>
           <ConnectButton />
@@ -45,20 +45,20 @@ export default function WalletAccountCard() {
           <div className="rounded-xl border border-white/10 bg-black/30 p-3">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-xs text-gray-400">Connected wallet</p>
-                <p className="text-sm font-semibold">{shortAddr(address)}</p>
+                <p className="text-sm text-gray-400">Connected wallet</p>
+                <p className="text-base font-semibold">{shortAddr(address)}</p>
               </div>
               <button
                 onClick={copy}
-                className="rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-xs text-gray-200 hover:bg-black/50"
+                className="rounded-lg border border-white/10 bg-black/30 px-3 py-1.5 text-sm text-gray-200 hover:bg-black/50"
               >
                 Copy
               </button>
             </div>
 
             <div className="mt-3 flex items-center justify-between">
-              <p className="text-xs text-gray-400">Network</p>
-              <p className="text-xs text-gray-200">Chain ID: {chainId}</p>
+              <p className="text-sm text-gray-400">Network</p>
+              <p className="text-sm text-gray-200">Chain ID: {chainId}</p>
             </div>
 
             {addrUrl && (
@@ -66,7 +66,7 @@ export default function WalletAccountCard() {
                 href={addrUrl}
                 target="_blank"
                 rel="noreferrer"
-                className="mt-3 inline-block text-xs text-lime-300 hover:text-lime-200 underline"
+                className="mt-3 inline-block text-sm text-pink-300 hover:text-pink-200 underline"
               >
                 View on explorer
               </a>
@@ -75,7 +75,7 @@ export default function WalletAccountCard() {
 
           <button
             onClick={() => disconnect()}
-            className="w-full rounded-xl bg-gradient-to-r from-lime-400 to-lime-500 py-2.5 text-sm font-semibold text-black hover:from-lime-500 hover:to-lime-400"
+            className="w-full rounded-xl bg-gradient-to-r from-pink-500 to-pink-600 py-2.5 text-base font-semibold text-white hover:from-pink-600 hover:to-pink-500"
           >
             Disconnect
           </button>

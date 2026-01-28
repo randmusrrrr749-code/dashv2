@@ -9,8 +9,8 @@ export default function StakingPage() {
     <DashboardLayout>
       <div className="mb-6">
         <h1 className="text-xl md:text-2xl font-semibold text-white">Staking</h1>
-        <p className="text-sm text-gray-400">
-          Stake OMIX, view positions, withdraw, and reinvest.
+        <p className="text-base text-gray-400">
+          Stake BLV, view positions, withdraw, and reinvest.
         </p>
       </div>
 

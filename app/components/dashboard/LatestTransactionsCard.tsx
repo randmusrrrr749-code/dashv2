@@ -15,13 +15,13 @@ type TxStatus = "Pending" | "Confirmed" | "Failed";
 function StatusPill({ status }: { status: TxStatus }) {
   const cls =
     status === "Confirmed"
-      ? "border-lime-400/30 bg-lime-400/10 text-lime-300"
+      ? "border-pink-400/30 bg-pink-400/10 text-pink-300"
       : status === "Pending"
       ? "border-yellow-400/30 bg-yellow-400/10 text-yellow-200"
       : "border-red-400/30 bg-red-400/10 text-red-200";
 
   return (
-    <span className={`text-[10px] px-2 py-0.5 rounded-full border ${cls}`}>
+    <span className={`text-sm px-2 py-0.5 rounded-full border ${cls}`}>
       {status}
     </span>
   );
@@ -74,14 +74,15 @@ const rows = useMemo(() => {
 
 
   return (
-    <section className="neon-card neon-card--soft p-4">
+    <section className="neon-card neon-card--soft p-4 w-full max-w-full min-w-0">
+
       <div className="flex items-start justify-between mb-3">
         <div>
-          <h2 className="text-sm font-semibold text-white">Latest Transactions</h2>
-          <p className="text-[11px] text-gray-400">Live presale activity</p>
+          <h2 className="text-base font-semibold text-white">Latest Transactions</h2>
+          
         </div>
 
-    <span className="text-[10px] px-2 py-1 rounded-full border border-white/10 bg-white/5 text-gray-300">
+    <span className="text-sm px-2 py-1 rounded-full border border-white/10 bg-white/5 text-gray-300">
   Page {safePage + 1} / {MAX_PAGES}
 </span>
 
@@ -95,22 +96,23 @@ const rows = useMemo(() => {
               hover:bg-white/[0.05] transition flex items-center justify-between gap-3"
           >
             <div className="flex items-start gap-2 min-w-0">
-              <span className="mt-[2px] inline-flex h-2 w-2 rounded-full bg-lime-300/80 shadow-[0_0_12px_rgba(163,230,53,0.35)]" />
+              <span className="mt-[2px] inline-flex h-2 w-2 rounded-full bg-pink-300/80 shadow-[0_0_12px_rgba(255,0,102,0.35)]" />
               {/* or: <TypeIcon kind="Presale" /> */}
 
               <div className="min-w-0">
-                <p className="text-[12px] text-gray-200 truncate">
+                <p className="min-w-0 text-sm text-gray-200 truncate">
+
                   <span className="text-gray-400">Presale</span>
                   <span className="text-gray-500"> • </span>
                   <span className="tabular-nums font-medium text-gray-100">
                     {formatUsd(tx.usd)}
                   </span>
                   <span className="text-gray-500"> • </span>
-                  <span className="font-mono text-[11px] text-gray-300">
+                  <span className="font-mono text-base text-gray-300">
                     {tx.address}
                   </span>
                 </p>
-                <p className="text-[10px] text-gray-500">{timeAgoFromMs(tx.ts)}</p>
+                <p className="text-sm text-gray-500">{timeAgoFromMs(tx.ts)}</p>
               </div>
             </div>
 
@@ -124,7 +126,7 @@ const rows = useMemo(() => {
     type="button"
     onClick={() => setPage((p) => Math.max(0, p - 1))}
     disabled={safePage === 0}
-    className="text-[10px] px-2 py-1 rounded-full border border-white/10 bg-white/5 text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/10 transition"
+    className="text-sm px-2 py-1 rounded-full border border-white/10 bg-white/5 text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/10 transition"
   >
     ← Prev
   </button>
@@ -140,8 +142,8 @@ const rows = useMemo(() => {
           type="button"
           onClick={() => setPage(i)}
           disabled={disabled}
-          className={`h-7 min-w-7 px-2 rounded-full border text-[10px] transition
-            ${active ? "border-lime-400/60 bg-lime-400/15 text-lime-200" : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"}
+          className={`h-8 min-w-8 px-2 rounded-full border text-sm transition
+            ${active ? "border-pink-400/60 bg-pink-400/15 text-pink-200" : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10"}
             ${disabled ? "opacity-30 cursor-not-allowed hover:bg-white/5" : ""}`}
         >
           {i + 1}
@@ -154,7 +156,7 @@ const rows = useMemo(() => {
     type="button"
     onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
     disabled={safePage >= totalPages - 1}
-    className="text-[10px] px-2 py-1 rounded-full border border-white/10 bg-white/5 text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/10 transition"
+    className="text-sm px-2 py-1 rounded-full border border-white/10 bg-white/5 text-gray-200 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-white/10 transition"
   >
     Next →
   </button>

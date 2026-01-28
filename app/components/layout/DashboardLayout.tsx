@@ -127,9 +127,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             key={item.href}
             href={item.href}
             onClick={onClick}
-            className={`flex items-center justify-between px-3 py-2 text-sm rounded-lg transition ${
+            className={`flex items-center justify-between px-3 py-2 text-base rounded-lg transition ${
               active
-                ? "bg-gradient-to-r from-lime-400 to-purple-500 text-black font-semibold"
+                ? "bg-gradient-to-r from-pink-500 to-cyan-400 text-black font-semibold"
                 : "text-gray-300 hover:bg-white/5"
             }`}
           >
@@ -147,8 +147,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="px-3 py-4 border-b border-white/5">
   <Link href="/dashboard" className="flex items-center">
     <Image
-      src="/images/logo1.png"
-      alt="Weewux"
+      src="/images/logo2.png"
+      alt="Belvarium"
       width={250}
       height={60}
       priority
@@ -160,9 +160,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
         <NavLinks />
 
-        <div className="px-4 py-4 border-t border-white/5 text-xs text-gray-400">
-          <p>Weewux Dashboard</p>
-          <p className="text-[10px] mt-1">Manage OMIX, staking & presale.</p>
+        <div className="px-4 py-4 border-t border-white/5 text-sm text-gray-400">
+          <p>Belvarium Dashboard</p>
+          <p className="text-sm mt-1">Manage BLV, staking & presale.</p>
         </div>
       </aside>
 
@@ -190,8 +190,8 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   className="flex items-center"
 >
   <Image
-    src="/images/logo.png"
-    alt="Weewux"
+    src="/images/logo2.png"
+    alt="Belvarium"
     width={250}
     height={60}
     priority
@@ -211,9 +211,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
 
             <NavLinks onClick={() => setMobileOpen(false)} />
 
-            <div className="px-4 py-4 border-t border-white/10 text-xs text-gray-400">
-              <p>Weewux Dashboard</p>
-              <p className="text-[10px] mt-1">Control center for OMIX.</p>
+            <div className="px-4 py-4 border-t border-white/10 text-sm text-gray-400">
+              <p>Belvarium Dashboard</p>
+              <p className="text-sm mt-1">Control center for BLV.</p>
             </div>
           </div>
         </div>
@@ -240,10 +240,10 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
             </button>
 
             <div>
-              <p className="text-xs uppercase tracking-[0.25em] text-gray-400">
-                Weewux Dashboard
+              <p className="text-sm uppercase tracking-[0.25em] text-gray-400">
+                Belvarium Dashboard
               </p>
-              <p className="text-sm text-gray-100">Control center for OMIX</p>
+              <p className="text-base text-gray-100">Control center for BLV</p>
             </div>
           </div>
 
@@ -260,28 +260,28 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 className="pointer-events-none absolute inset-0 hidden md:block"
             style={{ ["--mx" as any]: 0, ["--my" as any]: 0 }}
           >
-            {/* Base atmosphere */}
+            {/* Base atmosphere - Bellarium pink/cyan */}
             <div
               className="absolute inset-0 opacity-95"
               style={{
                 backgroundImage: `
-                  radial-gradient(1200px 620px at 50% 10%, rgba(163,230,53,0.22), transparent 62%),
-                  radial-gradient(900px 560px at 18% 65%, rgba(163,230,53,0.12), transparent 65%),
-                  radial-gradient(900px 560px at 88% 75%, rgba(163,230,53,0.10), transparent 65%),
-                  radial-gradient(900px 520px at 70% 120%, rgba(168,85,247,0.08), transparent 60%),
-                  linear-gradient(180deg, rgba(163,230,53,0.05), transparent 55%, rgba(0,0,0,0.0) 100%)
+                  radial-gradient(1200px 620px at 50% 10%, rgba(255,0,102,0.22), transparent 62%),
+                  radial-gradient(900px 560px at 18% 65%, rgba(0,212,255,0.12), transparent 65%),
+                  radial-gradient(900px 560px at 88% 75%, rgba(255,0,102,0.10), transparent 65%),
+                  radial-gradient(900px 520px at 70% 120%, rgba(0,212,255,0.08), transparent 60%),
+                  linear-gradient(180deg, rgba(255,0,102,0.05), transparent 55%, rgba(0,0,0,0.0) 100%)
                 `,
               }}
             />
 
-            {/* Spotlight cone */}
+            {/* Spotlight cone - Bellarium pink */}
             <div
               className="absolute inset-0 opacity-70 mix-blend-screen"
               style={{
                 backgroundImage: `
                   radial-gradient(600px 380px at 52% 18%, rgba(255,255,255,0.08), transparent 62%),
-                  radial-gradient(900px 620px at 52% 34%, rgba(163,230,53,0.10), transparent 70%),
-                  linear-gradient(180deg, rgba(163,230,53,0.10), transparent 55%)
+                  radial-gradient(900px 620px at 52% 34%, rgba(255,0,102,0.10), transparent 70%),
+                  linear-gradient(180deg, rgba(255,0,102,0.10), transparent 55%)
                 `,
                 filter: "blur(18px)",
               }}
@@ -334,9 +334,9 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
                 </mask>
 
                 <linearGradient id="terrainTint" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="rgba(234,179,8,0)" />
-                  <stop offset="58%" stopColor="rgba(234,179,8,0.28)" />
-                  <stop offset="78%" stopColor="rgba(163,230,53,0.14)" />
+                  <stop offset="0%" stopColor="rgba(0,212,255,0)" />
+                  <stop offset="58%" stopColor="rgba(0,212,255,0.28)" />
+                  <stop offset="78%" stopColor="rgba(255,0,102,0.14)" />
                   <stop offset="100%" stopColor="rgba(0,0,0,0)" />
                 </linearGradient>
 

@@ -13,14 +13,14 @@ type LeaderboardEntry = {
   isYou?: boolean;
 };
 
-const OMIX_PRICE = 0.017;
+const BLV_PRICE = 0.017;
 
 const overallTopBuyers: LeaderboardEntry[] = [
-  { rank: 1, address: "0x12f4...9AfE", usd: 48_551, omix: Math.floor(48_551 / OMIX_PRICE) },
-  { rank: 2, address: "0x98F1...21cD", usd: 47_247, omix: Math.floor(47_247 / OMIX_PRICE) },
-  { rank: 3, address: "0xAA77...B4e2", usd: 36_819, omix: Math.floor(36_819 / OMIX_PRICE) },
-  { rank: 4, address: "0x0F1f...0F0F", usd: 34_342, omix: Math.floor(34_342 / OMIX_PRICE) },
-  { rank: 5, address: "0x552B...Ba1F", usd: 29_876, omix: Math.floor(29_876 / OMIX_PRICE) },
+  { rank: 1, address: "0x12f4...9AfE", usd: 48_551, omix: Math.floor(48_551 / BLV_PRICE) },
+  { rank: 2, address: "0x98F1...21cD", usd: 47_247, omix: Math.floor(47_247 / BLV_PRICE) },
+  { rank: 3, address: "0xAA77...B4e2", usd: 36_819, omix: Math.floor(36_819 / BLV_PRICE) },
+  { rank: 4, address: "0x0F1f...0F0F", usd: 34_342, omix: Math.floor(34_342 / BLV_PRICE) },
+  { rank: 5, address: "0x552B...Ba1F", usd: 29_876, omix: Math.floor(29_876 / BLV_PRICE) },
 ];
 
 function seededRandom(seed: number): () => number {
@@ -64,9 +64,9 @@ function generateDailyTopBuyers(): LeaderboardEntry[] {
   const address3 = generateAddress(daySeed, 3);
 
   const entries: LeaderboardEntry[] = [
-    { rank: 1, address: address1, usd: firstPlaceUSD, omix: Math.floor(firstPlaceUSD / OMIX_PRICE) },
-    { rank: 2, address: address2, usd: secondPlaceUSD, omix: Math.floor(secondPlaceUSD / OMIX_PRICE) },
-    { rank: 3, address: address3, usd: thirdPlaceUSD, omix: Math.floor(thirdPlaceUSD / OMIX_PRICE) },
+    { rank: 1, address: address1, usd: firstPlaceUSD, omix: Math.floor(firstPlaceUSD / BLV_PRICE) },
+    { rank: 2, address: address2, usd: secondPlaceUSD, omix: Math.floor(secondPlaceUSD / BLV_PRICE) },
+    { rank: 3, address: address3, usd: thirdPlaceUSD, omix: Math.floor(thirdPlaceUSD / BLV_PRICE) },
   ];
 
   entries.sort((a, b) => b.usd - a.usd);
@@ -75,10 +75,10 @@ function generateDailyTopBuyers(): LeaderboardEntry[] {
 }
 
 function RankBadge({ rank }: { rank: number }) {
-  if (rank === 1) return <span className="text-[16px] leading-none">🥇</span>;
-  if (rank === 2) return <span className="text-[16px] leading-none">🥈</span>;
-  if (rank === 3) return <span className="text-[16px] leading-none">🥉</span>;
-  return <span className="text-[10px] tabular-nums text-gray-500">{rank}</span>;
+  if (rank === 1) return <span className="text-lg leading-none">🥇</span>;
+  if (rank === 2) return <span className="text-lg leading-none">🥈</span>;
+  if (rank === 3) return <span className="text-lg leading-none">🥉</span>;
+  return <span className="text-sm tabular-nums text-gray-500">{rank}</span>;
 
 }
 
@@ -126,9 +126,7 @@ export default function LeaderboardCard({
           <h2 className="text-sm md:text-base font-semibold text-white">
   Top Buyers
 </h2>
-<p className="text-[11px] text-gray-400">
-  Ranked by total USD contributed
-</p>
+
 
         </div>
 
@@ -137,9 +135,9 @@ export default function LeaderboardCard({
             <button
               type="button"
               onClick={() => setMode("overall")}
-              className={`px-3 py-1 rounded-full text-[10px] font-medium transition-all duration-200 ${
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
                 mode === "overall"
-                  ? "bg-lime-400/20 border border-lime-400/60 text-lime-300 shadow-[0_0_8px_rgba(163,230,53,0.3)]"
+                  ? "bg-pink-400/20 border border-pink-400/60 text-pink-300 shadow-[0_0_8px_rgba(255,0,102,0.3)]"
                   : "border border-transparent text-gray-500 hover:text-gray-400"
               }`}
             >
@@ -148,9 +146,9 @@ export default function LeaderboardCard({
             <button
               type="button"
               onClick={() => setMode("daily")}
-              className={`px-3 py-1 rounded-full text-[10px] font-medium transition-all duration-200 ${
+              className={`px-3 py-1 rounded-full text-sm font-medium transition-all duration-200 ${
                 mode === "daily"
-                  ? "bg-lime-400/20 border border-lime-400/60 text-lime-300 shadow-[0_0_8px_rgba(163,230,53,0.3)]"
+                  ? "bg-pink-400/20 border border-pink-400/60 text-pink-300 shadow-[0_0_8px_rgba(255,0,102,0.3)]"
                   : "border border-transparent text-gray-500 hover:text-gray-400"
               }`}
             >
@@ -164,14 +162,14 @@ export default function LeaderboardCard({
 
       {mode === "daily" && (
         <div className="flex justify-end mb-2">
-          <span className="text-[9px] text-gray-500 italic">Resets daily (UTC)</span>
+          <span className="text-sm text-gray-500 italic">Resets daily (UTC)</span>
         </div>
       )}
 
       {/* Compact widget view */}
       {variant === "compact" ? (
-        <div className="mt-2 text-xs text-gray-400">
-<div className="grid grid-cols-[2.25rem,1fr,8rem] gap-3 pb-2 items-end text-[10px] text-gray-500">
+        <div className="mt-2 text-sm text-gray-400 overflow-x-auto">
+<div className="min-w-[360px] grid grid-cols-[2.25rem_1fr_8rem] gap-3 pb-2 items-end text-sm text-gray-500">
   <span className="leading-none">#</span>
   <span className="leading-none">Wallet</span>
   <span className="text-right leading-none">USD</span>
@@ -179,28 +177,28 @@ export default function LeaderboardCard({
 <div className="h-px bg-white/10 mt-2" />
 
 
-          <div className="mt-2 space-y-2">
+          <div className="mt-2 space-y-2 min-w-[360px]">
 
             {rows.map((entry) => (
               <div
                 key={`${mode}-${entry.rank}`}
-                className="grid grid-cols-[2.25rem,1fr,8rem] gap-3 items-center px-3 py-2.5 rounded-xl
+                className="grid grid-cols-[2.25rem_1fr_8rem] gap-3 items-center px-3 py-2.5 rounded-xl
   border border-white/10 bg-white/[0.03] hover:bg-white/[0.06] transition"
 
-                title={`OMIX: ${entry.omix.toLocaleString()}`}
+                title={`BLV: ${entry.omix.toLocaleString()}`}
               >
                 <div className="flex items-center gap-1.5 leading-none">
                   <RankBadge rank={entry.rank} />
                 </div>
 
-                <span className="font-mono text-[11px] text-gray-200">
+                <span className="font-mono text-sm text-gray-200">
                   {entry.address}
                 </span>
 
                 <span className="text-right tabular-nums">
                   <span className="text-gray-100">${entry.usd.toLocaleString()}</span>
-                  <span className="block text-[10px] text-gray-500">
-                    {entry.omix.toLocaleString()} OMIX
+                  <span className="block text-sm text-gray-500">
+                    {entry.omix.toLocaleString()} BLV
                   </span>
                 </span>
               </div>
@@ -209,26 +207,26 @@ export default function LeaderboardCard({
         </div>
       ) : (
         // Default view (you can keep your old 4-column table here if you want)
-        <div className="mt-2 text-xs text-gray-400">
-          <div className="grid grid-cols-[2.25rem,1fr,7.5rem,9.5rem] gap-3 pb-2 border-b border-white/10 items-end text-gray-300/90">
+        <div className="mt-2 text-sm text-gray-400 overflow-x-auto">
+          <div className="min-w-[520px] grid grid-cols-[2.25rem_1fr_7.5rem_9.5rem] gap-3 pb-2 border-b border-white/10 items-end text-gray-300/90">
             <span className="text-gray-500 leading-none">#</span>
             <span className="leading-none">Wallet</span>
             <span className="text-right leading-none">USD</span>
-            <span className="text-right leading-none">OMIX</span>
+            <span className="text-right leading-none">BLV</span>
           </div>
 
           <div className="divide-y divide-white/5">
             {rows.map((entry) => (
               <div
                 key={`${mode}-${entry.rank}`}
-                className="grid grid-cols-[2.25rem,1fr,7.5rem,9.5rem] gap-3 items-center py-2 rounded-md
+                className="min-w-[520px] grid grid-cols-[2.25rem_1fr_7.5rem_9.5rem] gap-3 items-center py-2 rounded-md
                   hover:bg-white/5 hover:translate-x-[1px] transition"
               >
                 <div className="flex items-center gap-1.5 leading-none">
                   <RankBadge rank={entry.rank} />
                 </div>
 
-                <span className="font-mono text-[11px] text-gray-200">
+                <span className="font-mono text-sm text-gray-200">
                   {entry.address}
                 </span>
 
@@ -236,7 +234,7 @@ export default function LeaderboardCard({
                   ${entry.usd.toLocaleString()}
                 </span>
 
-                <span className="text-right text-lime-300 tabular-nums">
+                <span className="text-right text-pink-300 tabular-nums">
                   {entry.omix.toLocaleString()}
                 </span>
               </div>
