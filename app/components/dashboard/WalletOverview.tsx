@@ -275,16 +275,7 @@ export default function WalletOverview() {
           Stake
         </a>
 
-        <a
-          href="#referral"
-          className={`inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-sm font-semibold
-            border border-white/10 bg-white/5 transition ${
-              hasPurchased ? "text-gray-200 hover:bg-white/10" : "text-gray-500 cursor-not-allowed pointer-events-none"
-            }`}
-          title={hasPurchased ? "Open Referral panel" : "Locked until first purchase"}
-        >
-          Referral
-        </a>
+   
       </div>
     </motion.section>
   );

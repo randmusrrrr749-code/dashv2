@@ -70,7 +70,7 @@ export default function DashboardOverviewPage() {
   // Wallet
   const { address, isConnected } = useAccount();
 
-  const { purchasedBlv } = useOffchainDashboard(address, isConnected);
+ const { purchasedOmix: purchasedBlv } = useOffchainDashboard(address, isConnected);
 
   // Rank / tier (based on spend)
   const ASSUMED_BLV_PRICE = 0.0175;
@@ -156,7 +156,12 @@ export default function DashboardOverviewPage() {
 
   <div className="min-w-0 grid gap-6">
     <LatestTransactionsCard txs={sim.latestTxs} />
-    <ReferralCard purchasedBlv={purchasedBlv} isConnected={isConnected} address={address} />
+    <ReferralCard
+  purchasedOmix={purchasedBlv}
+  isConnected={isConnected}
+  address={address}
+/>
+
   </div>
 </section>
 

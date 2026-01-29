@@ -147,7 +147,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
         <div className="px-3 py-4 border-b border-white/5">
   <Link href="/dashboard" className="flex items-center">
     <Image
-      src="/images/logo2.png"
+      src="/images/logo3.png"
       alt="Belvarium"
       width={250}
       height={60}
@@ -190,7 +190,7 @@ export default function DashboardLayout({ children }: DashboardLayoutProps) {
   className="flex items-center"
 >
   <Image
-    src="/images/logo2.png"
+    src="/images/logo3.png"
     alt="Belvarium"
     width={250}
     height={60}
